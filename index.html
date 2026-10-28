@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D0F14">
+<title>KUDA — куда уходят твои деньги</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0D0F14;--card:rgba(255,255,255,.05);--line:rgba(255,255,255,.09);--txt:#EDEFF3;--mut:#8A90A0;--acc:#2EE6A8;--red:#FF6B6B;--r:20px}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;overscroll-behavior:none}
+.hidden{display:none!important}
+.muted{color:var(--mut)}.tiny{font-size:12px}
+#app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;font-size:16px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:14px;color:var(--txt);padding:12px 14px;width:100%;outline:none}
+input:focus,select:focus{border-color:var(--acc)}
+select option{background:#151923}
+.btn{background:var(--acc);color:#06281C;font-weight:800;border-radius:16px;padding:14px 18px;font-size:16px;width:100%}
+.btn.ghost{background:transparent;border:1px solid var(--acc);color:var(--acc)}
+.chip{border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--mut)}
+.logo{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#2EE6A8,#0FAF7B);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;color:#06281C}
+.logo.sm{width:34px;height:34px;border-radius:11px;font-size:18px}
+#onb{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+.onb-card{width:100%;display:flex;flex-direction:column;gap:14px;text-align:center}
+.onb-card h1{font-size:40px;letter-spacing:4px}
+.onb-card label{text-align:left;font-size:13px;color:var(--mut);display:flex;flex-direction:column;gap:6px}
+.onb-card .logo{margin:0 auto}
+#hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;position:sticky;top:0;background:rgba(13,15,20,.85);backdrop-filter:blur(12px);z-index:5}
+.hdr-title{font-weight:800;letter-spacing:3px;flex:1}
+main{flex:1;padding:0 16px 170px}
+.glass{background:var(--card);border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(8px)}
+.hero{padding:20px;margin-top:6px}
+.hero-top{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.hero-bal{font-size:44px;font-weight:800;margin:6px 0 14px;font-variant-numeric:tabular-nums}
+.hero-row{display:flex;gap:24px}
+.inc{color:var(--acc);font-weight:600}.exp{color:var(--red);font-weight:600}
+.today{padding:18px 20px;margin-top:12px;text-align:center;border-color:rgba(46,230,168,.35)}
+.today-num{font-size:36px;font-weight:800;color:var(--acc);font-variant-numeric:tabular-nums}
+#limitWarn{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.warn{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.35);border-radius:14px;padding:10px 14px;font-size:13px}
+.sec{margin:22px 0 10px;font-size:15px;color:var(--mut);font-weight:600}
+.day-h{font-size:12px;color:var(--mut);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px}
+.tx{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:8px}
+.tx-ic{width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.tx-mid{flex:1;min-width:0}
+.tx-t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-s{font-size:12px;color:var(--mut)}
+.tag{font-size:10px;border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:var(--mut)}
+.tx-a{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tx-x{color:var(--mut);font-size:18px;padding:4px}
+.empty{text-align:center;color:var(--mut);padding:30px 10px;font-size:14px}
+.rep-head{display:flex;align-items:center;justify-content:space-between;margin:14px 0}
+.rep-title{font-weight:800;font-size:18px}
+.rep-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.rep-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center}
+.rep-card b{display:block;font-size:17px;margin-top:4px;font-variant-numeric:tabular-nums}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar-row .b-ic{width:30px;text-align:center}
+.bar-row .b-n{width:110px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-wrap{flex:1;height:10px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.bar{height:100%;background:var(--acc);border-radius:99px}
+.bar-row .b-v{font-size:13px;font-weight:600;width:70px;text-align:right;font-variant-numeric:tabular-nums}
+.row{display:flex;gap:10px;margin-top:16px}
+.rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rc{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card)}
+.rc img{width:100%;height:140px;object-fit:cover;display:block}
+.rc div{padding:8px 10px;font-size:12px;color:var(--mut)}
+.set-group{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
+.set-group h4{font-size:14px;color:var(--mut)}
+.set-group label{font-size:13px;color:var(--mut);display:flex;flex-direction:column;gap:6px}
+.lim-row{display:flex;align-items:center;gap:10px}
+.lim-row span{width:150px;font-size:14px}
+.danger{color:var(--red);border:1px solid rgba(255,107,107,.4);border-radius:14px;padding:12px;text-align:center;width:100%}
+#addbar{position:fixed;left:0;right:0;bottom:64px;display:flex;gap:8px;padding:10px 14px;background:rgba(13,15,20,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:10}
+@media(min-width:560px){#addbar,#nav{max-width:520px;left:50%;transform:translateX(-50%)}}
+#addbar input{flex:1}
+.icon-btn{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.07);font-size:20px;flex-shrink:0}
+.icon-btn.go{background:var(--acc);color:#06281C}
+#nav{position:fixed;left:0;right:0;bottom:0;height:64px;display:flex;background:rgba(13,15,20,.95);backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:10}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:20px;color:var(--mut)}
+.nav-btn span{font-size:10px}
+.nav-btn.active{color:var(--acc)}
+#toast{position:fixed;left:50%;bottom:140px;transform:translateX(-50%);background:#1C2230;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font-size:14px;z-index:50;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+#loader{position:fixed;inset:0;background:rgba(13,15,20,.85);display:flex;align-items:center;justify-content:center;z-index:60;font-size:15px;color:var(--mut);backdrop-filter:blur(4px)}
+#printArea{display:none}
+@media print{
+body{background:#fff;color:#000}
+#app>*{display:none!important}
+#printArea{display:block!important;color:#000;font-size:13px}
+#printArea h1{font-size:20px;margin-bottom:8px}
+#printArea table{width:100%;border-collapse:collapse;margin-top:10px}
+#printArea td,#printArea th{border:1px solid #999;padding:5px 8px;text-align:left}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<section id="onb" class="hidden">
+<div class="onb-card">
+<div class="logo">K</div>
+<h1>KUDA</h1>
+<p class="muted">Куда уходят твои деньги — теперь видно</p>
+<label>Твоё имя (необязательно)<input id="onbName" placeholder="Евгений" autocomplete="off"></label>
+<label>Стартовый баланс<input id="onbBal" type="number" inputmode="decimal" placeholder="1000"></label>
+<label>Основная валюта<select id="onbCur"><option value="USD">$ USD</option><option value="EUR">€ EUR</option></select></label>
+<button class="btn" id="onbGo">Начать</button>
+<p class="tiny muted">Данные хранятся только на твоём устройстве</p>
+</div>
+</section>
+<header id="hdr" class="hidden">
+<div class="logo sm">K</div>
+<div class="hdr-title">KUDA</div>
+<button id="installBtn" class="chip hidden">⬇ Установить</button>
+</header>
+<main id="main" class="hidden">
+<section id="tab-home" class="tab">
+<div class="hero glass">
+<div class="hero-top"><span class="muted">Остаток</span><span id="heroCur" class="chip"></span></div>
+<div id="heroBal" class="hero-bal">0</div>
+<div class="hero-row">
+<div><div class="muted tiny">Доходы месяца</div><div id="heroInc" class="inc">+0</div></div>
+<div><div class="muted tiny">Траты месяца</div><div id="heroExp" class="exp">−0</div></div>
+<div><div class="muted tiny">Итог</div><div id="heroNet">0</div></div>
+</div>
+</div>
+<div class="today glass">
+<div class="muted">Сегодня можно потратить</div>
+<div id="todayNum" class="today-num">0</div>
+<div id="todaySub" class="tiny muted"></div>
+</div>
+<div id="limitWarn"></div>
+<h3 class="sec">Лента</h3>
+<div id="feed"></div>
+</section>
+<section id="tab-report" class="tab hidden">
+<div class="rep-head">
+<button id="repPrev" class="chip">‹</button>
+<div id="repTitle" class="rep-title"></div>
+<button id="repNext" class="chip">›</button>
+</div>
+<div id="repBody"></div>
+<div class="row">
+<button class="btn" id="csvBtn">⬇ Excel (CSV)</button>
+<button class="btn ghost" id="pdfBtn">🖨 PDF</button>
+</div>
+</section>
+<section id="tab-receipts" class="tab hidden">
+<h3 class="sec">Архив чеков</h3>
+<div id="rcGrid" class="rc-grid"></div>
+</section>
+<section id="tab-set" class="tab hidden">
+<div class="set-group">
+<h4>Баланс и валюта</h4>
+<label>Стартовый баланс<input id="setBal" type="number" inputmode="decimal"></label>
+<label>Основная валюта<select id="setCur"><option value="USD">$ USD</option><option value="EUR">€ EUR</option></select></label>
+<label>Курс: 1 USD = EUR<input id="setRate" type="number" step="0.0001" inputmode="decimal"></label>
+<button class="chip" id="rateAuto">🔄 Обновить курс автоматически</button>
+</div>
+<div class="set-group">
+<h4>Лимиты по категориям (в месяц, 0 = без лимита)</h4>
+<div id="limList"></div>
+</div>
+<div class="set-group">
+<h4>AI для чеков (Kimi)</h4>
+<label>API-ключ Moonshot/Kimi<input id="setKey" type="password" placeholder="sk-..." autocomplete="off"></label>
+<label>Модель<input id="setModel" placeholder="moonshot-v1-32k-vision-preview"></label>
+<button class="chip" id="keyTest">Проверить ключ</button>
+<p class="tiny muted">Без ключа чеки сохраняются в архив, сумму вводишь вручную</p>
+</div>
+<div class="set-group">
+<h4>Тег по умолчанию для новых трат</h4>
+<select id="setTag"><option value="personal">Личное</option><option value="business">Бизнес</option></select>
+</div>
+<div class="set-group">
+<h4>Юридическая информация</h4>
+<p class="tiny muted">KUDA — инструмент учёта, а не финансовый советник. AI может ошибаться при распознавании чеков — проверяй суммы. Все данные хранятся локально на твоём устройстве и не передаются третьим лицам, кроме запросов к AI API (если введён ключ) для разбора чеков.</p>
+</div>
+<button class="danger" id="wipe">🗑 Стереть все данные</button>
+<p class="tiny muted" style="text-align:center;margin-top:10px">KUDA v1.0 · сделано с Kimi</p>
+</section>
+</main>
+<div id="addbar" class="hidden">
+<input id="addText" placeholder="кофе 5 и бензин 40 · доход пиши с +" autocomplete="off">
+<button id="camBtn" class="icon-btn" title="Сфотографировать чек">📷</button>
+<input type="file" id="camInput" accept="image/*" capture="environment" class="hidden">
+<button id="addGo" class="icon-btn go">➤</button>
+</div>
+<nav id="nav" class="hidden">
+<button data-tab="home" class="nav-btn active">🏠<span>Главная</span></button>
+<button data-tab="report" class="nav-btn">📊<span>Отчёт</span></button>
+<button data-tab="receipts" class="nav-btn">🧾<span>Чеки</span></button>
+<button data-tab="set" class="nav-btn">⚙️<span>Ещё</span></button>
+</nav>
+<div id="toast"></div>
+<div id="loader" class="hidden">Kimi читает чек…</div>
+<div id="printArea"></div>
+</div>
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const SK='kuda_v1';
+const CATS=[
+{id:'food',name:'Продукты',icon:'🛒',kw:['продукт','молоко','хлеб','магазин','market','grocery','food','еда','супермаркет','овощ','фрукт','мясо']},
+{id:'cafe',name:'Кафе и рестораны',icon:'☕',kw:['кофе','кафе','обед','ужин','завтрак','ресторан','пицц','coffee','lunch','dinner','sushi','суши','бургер','шаурм']},
+{id:'transport',name:'Транспорт',icon:'⛽',kw:['бензин','такси','топливо','проезд','парковк','uber','bolt','fuel','taxi','метро','автобус','заправк']},
+{id:'home',name:'Дом и быт',icon:'🏠',kw:['дом','порошок','бытов','коммунал','аренда','rent','home','мебель','хозтовар','ремонт']},
+{id:'health',name:'Здоровье',icon:'💊',kw:['аптек','лекарств','врач','doctor','pharm','стоматолог','анализ','медицин']},
+{id:'fun',name:'Развлечения',icon:'🎬',kw:['кино','игр','развлеч','movie','game','боулинг','концерт','театр']},
+{id:'clothes',name:'Одежда',icon:'👕',kw:['одежд','обувь','кроссовк','clothes','shoes','куртка','джинсы','футболк']},
+{id:'connect',name:'Связь и интернет',icon:'📱',kw:['связь','интернет','телефон','мобил','internet','phone','sim','оператор']},
+{id:'subs',name:'Подписки',icon:'🔁',kw:['подписк','subscription','netflix','spotify','youtube','icloud','premium']},
+{id:'business',name:'Бизнес',icon:'💼',kw:['бизнес','реклам','хостинг','домен','ads','hosting','business','офис','сервис']},
+{id:'income',name:'Доход',icon:'💰',kw:[]},
+{id:'other',name:'Прочее',icon:'📦',kw:[]}];
+const cat=id=>CATS.find(c=>c.id===id)||CATS[CATS.length-1];
+let S=null;
+function load(){try{return JSON.parse(localStorage.getItem(SK))}catch(e){return null}}
+function save(){localStorage.setItem(SK,JSON.stringify(S))}
+function toast(m){const t=$('toast');t.textContent=m;t.classList.add('show');clearTimeout(t._h);t._h=setTimeout(()=>t.classList.remove('show'),2600)}
+function sym(c){return(c||(S&&S.main)||'USD')==='EUR'?'€':'$'}
+function toMain(a,cur){if(!cur||cur===S.main)return a;if(cur==='USD'&&S.main==='EUR')return a*S.eurRate;if(cur==='EUR'&&S.main==='USD')return a/S.eurRate;return a}
+function fmt(n,cur){const v=Math.round(n*100)/100;return sym(cur)+(Math.abs(v)%1?(v).toFixed(2):Math.abs(v).toLocaleString('ru-RU'))}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function dkey(ts){const d=new Date(ts);return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}
+function guessCat(t){t=t.toLowerCase();for(const c of CATS)for(const k of c.kw)if(t.includes(k))return c.id;return'other'}
+function parseInput(text){
+const parts=text.split(/[,;\n]|\s+и\s+/i).map(s=>s.trim()).filter(Boolean);
+const out=[];
+for(const p of parts){
+const m=p.match(/(\d+(?:[.,]\d+)?)/);if(!m)continue;
+const amount=parseFloat(m[1].replace(',','.'));if(!(amount>0))continue;
+let title=p.replace(m[0],'').replace(/[+€$]/g,' ').replace(/\s+/g,' ').trim();
+const inc=/^\s*\+/.test(p)||/(зарплат|доход|получил|пришл|аванс|salary|income)/i.test(p);
+if(!title)title=inc?'Доход':'Трата';
+title=title[0].toUpperCase()+title.slice(1);
+out.push({amount,title,cat:inc?'income':guessCat(title),type:inc?'inc':'exp'});
+}
+return out;
+}
+function addTxs(items,cur,receiptId){
+for(const it of items)S.txs.unshift({id:uid(),ts:Date.now(),type:it.type,amount:it.amount,cur:cur||S.main,title:it.title,cat:it.cat,tag:S.defTag||'personal',receiptId:receiptId||null});
+save();renderAll();
+}
+function monthTxs(y,m){return S.txs.filter(t=>{const d=new Date(t.ts);return d.getFullYear()===y&&d.getMonth()===m})}
+function totals(y,m){let inc=0,exp=0;for(const t of monthTxs(y,m)){const v=toMain(t.amount,t.cur);if(t.type==='inc')inc+=v;else exp+=v}return{inc,exp}}
+function balance(){let b=+S.startBalance||0;for(const t of S.txs){const v=toMain(t.amount,t.cur);b+=t.type==='inc'?v:-v}return b}
+function renderHome(){
+const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+const bal=balance(),t=totals(y,m);
+$('heroCur').textContent=S.main==='EUR'?'€ EUR':'$ USD';
+$('heroBal').textContent=fmt(bal);
+$('heroInc').textContent='+'+fmt(t.inc);$('heroExp').textContent='−'+fmt(t.exp);
+const net=t.inc-t.exp;$('heroNet').textContent=(net>=0?'+':'−')+fmt(Math.abs(net));$('heroNet').className=net>=0?'inc':'exp';
+const dim=new Date(y,m+1,0).getDate(),left=dim-now.getDate()+1;
+const allow=bal>0?bal/left:0;
+$('todayNum').textContent=fmt(allow);
+$('todaySub').textContent='остаток ÷ '+left+' дн. до конца месяца';
+const warn=[];
+for(const c of CATS){const lim=+((S.limits||{})[c.id])||0;if(!lim)continue;
+let spent=0;for(const x of monthTxs(y,m))if(x.type==='exp'&&x.cat===c.id)spent+=toMain(x.amount,x.cur);
+if(spent>=lim)warn.push('⛔ '+c.icon+' '+c.name+': лимит превышен ('+fmt(spent)+' из '+fmt(lim)+')');
+else if(spent>=lim*0.8)warn.push('⚠️ '+c.icon+' '+c.name+': уже 80% лимита ('+fmt(spent)+' из '+fmt(lim)+')');}
+$('limitWarn').innerHTML=warn.map(w=>'<div class="warn">'+w+'</div>').join('');
+const groups={};for(const t of S.txs){const k=dkey(t.ts);(groups[k]=groups[k]||[]).push(t)}
+const keys=Object.keys(groups).sort().reverse().slice(0,31);
+if(!keys.length){$('feed').innerHTML='<div class="empty">Пусто. Напиши внизу «кофе 5» или сфотай чек 📷</div>';return}
+$('feed').innerHTML=keys.map(k=>{
+const d=new Date(k),lbl=d.toLocaleDateString('ru-RU',{weekday:'short',day:'numeric',month:'long'});
+return '<div class="day-h">'+lbl+'</div>'+groups[k].map(t=>{
+const c=cat(t.cat),a=t.type==='inc'?'+'+fmt(t.amount,t.cur):'−'+fmt(t.amount,t.cur);
+return '<div class="tx"><div class="tx-ic">'+c.icon+'</div><div class="tx-mid"><div class="tx-t">'+esc(t.title)+'</div><div class="tx-s">'+c.name+' · <span class="tag">'+(t.tag==='business'?'бизнес':'личное')+'</span></div></div><div class="tx-a '+(t.type==='inc'?'inc':'exp')+'">'+a+'</div><button class="tx-x" data-del="'+t.id+'">×</button></div>'}).join('')
+}).join('');
+}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+let repDate=new Date();
+const MN=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+function renderReport(){
+const y=repDate.getFullYear(),m=repDate.getMonth();
+$('repTitle').textContent=MN[m]+' '+y;
+const t=totals(y,m),list=monthTxs(y,m);
+const byCat={};for(const x of list)if(x.type==='exp')byCat[x.cat]=(byCat[x.cat]||0)+toMain(x.amount,x.cur);
+const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+const max=top.length?top[0][1]:1;
+const net=t.inc-t.exp;
+$('repBody').innerHTML='<div class="rep-cards"><div class="rep-card"><span class="tiny muted">Доходы</span><b class="inc">+'+fmt(t.inc)+'</b></div><div class="rep-card"><span class="tiny muted">Траты</span><b class="exp">−'+fmt(t.exp)+'</b></div><div class="rep-card"><span class="tiny muted">Итог</span><b class="'+(net>=0?'inc':'exp')+'">'+(net>=0?'+':'−')+fmt(Math.abs(net))+'</b></div></div>'
++(top.length?'<h3 class="sec">Топ категорий</h3>'+top.map(function(tp){const id=tp[0],v=tp[1];const c=cat(id);return '<div class="bar-row"><div class="b-ic">'+c.icon+'</div><div class="b-n">'+c.name+'</div><div class="bar-wrap"><div class="bar" style="width:'+Math.round(v/max*100)+'%"></div></div><div class="b-v">'+fmt(v)+'</div></div>'}).join(''):'<div class="empty">В этом месяце пока нет трат</div>')
++(list.length?'<p class="tiny muted" style="margin-top:12px">Всего операций: '+list.length+'</p>':'');
+}
+function monthCSV(){
+const y=repDate.getFullYear(),m=repDate.getMonth(),list=monthTxs(y,m).slice().sort((a,b)=>a.ts-b.ts);
+let csv='Дата;Тип;Название;Категория;Тег;Сумма;Валюта\n';
+for(const t of list)csv+=dkey(t.ts)+';'+(t.type==='inc'?'Доход':'Расход')+';'+t.title.replace(/;/g,',')+';'+cat(t.cat).name+';'+(t.tag==='business'?'Бизнес':'Личное')+';'+t.amount+';'+t.cur+'\n';
+const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='kuda-'+y+'-'+String(m+1).padStart(2,'0')+'.csv';a.click();URL.revokeObjectURL(a.href);
+}
+function printPDF(){
+const y=repDate.getFullYear(),m=repDate.getMonth(),list=monthTxs(y,m).slice().sort((a,b)=>a.ts-b.ts),t=totals(y,m);
+$('printArea').innerHTML='<h1>KUDA — отчёт: '+MN[m]+' '+y+'</h1><p>Доходы: +'+fmt(t.inc)+' · Траты: −'+fmt(t.exp)+'</p><table><tr><th>Дата</th><th>Название</th><th>Категория</th><th>Тег</th><th>Сумма</th></tr>'+list.map(x=>'<tr><td>'+dkey(x.ts)+'</td><td>'+esc(x.title)+'</td><td>'+cat(x.cat).name+'</td><td>'+(x.tag==='business'?'Бизнес':'Личное')+'</td><td>'+(x.type==='inc'?'+':'−')+fmt(x.amount,x.cur)+'</td></tr>').join('')+'</table>';
+window.print();
+}
+function renderReceipts(){
+if(!S.receipts.length){$('rcGrid').innerHTML='<div class="empty" style="grid-column:1/-1">Пока нет чеков. Нажми 📷 внизу</div>';return}
+$('rcGrid').innerHTML=S.receipts.map(r=>'<div class="rc"><img src="'+r.img+'" loading="lazy"><div>'+new Date(r.ts).toLocaleDateString('ru-RU')+(r.total?' · '+fmt(r.total,r.cur):'')+'</div></div>').join('');
+}
+function renderSettings(){
+$('setBal').value=S.startBalance;$('setCur').value=S.main;$('setRate').value=S.eurRate;
+$('setKey').value=S.kimiKey||'';$('setModel').value=S.kimiModel||'';$('setTag').value=S.defTag||'personal';
+$('limList').innerHTML=CATS.filter(c=>c.id!=='income').map(c=>'<div class="lim-row"><span>'+c.icon+' '+c.name+'</span><input type="number" inputmode="decimal" data-lim="'+c.id+'" value="'+((S.limits||{})[c.id]||'')+'" placeholder="0"></div>').join('');
+}
+function renderAll(){renderHome();renderReport();renderReceipts();renderSettings()}
+function switchTab(name){
+document.querySelectorAll('.tab').forEach(t=>t.classList.add('hidden'));
+$('tab-'+name).classList.remove('hidden');
+document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+$('addbar').classList.toggle('hidden',name!=='home');
+window.scrollTo(0,0);
+}
+async function fetchRate(){
+try{const r=await fetch('https://open.er-api.com/v6/latest/USD');const j=await r.json();
+if(j&&j.rates&&j.rates.EUR){S.eurRate=j.rates.EUR;save();renderSettings();renderHome();toast('Курс обновлён: 1 USD = '+S.eurRate+' EUR')}
+}catch(e){toast('Нет сети — курс не обновлён')}
+}
+function resizeImg(file){return new Promise(res=>{const img=new Image();img.onload=()=>{const mx=1024,sc=Math.min(1,mx/Math.max(img.width,img.height));const cv=document.createElement('canvas');cv.width=img.width*sc;cv.height=img.height*sc;cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);res(cv.toDataURL('image/jpeg',0.75))};img.src=URL.createObjectURL(file)})}
+async function kimiReceipt(dataUrl){
+const prompt='Прочитай этот чек и верни строго JSON без пояснений: {"total": число, "currency": "код валюты", "date": "YYYY-MM-DD или null", "items": [{"title": "название позиции", "amount": число, "category": "одна из: food,cafe,transport,home,health,fun,clothes,connect,subs,business,other"}]}';
+const r=await fetch('https://api.moonshot.ai/v1/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+S.kimiKey},body:JSON.stringify({model:S.kimiModel||'moonshot-v1-32k-vision-preview',temperature:0.1,messages:[{role:'user',content:[{type:'text',text:prompt},{type:'image_url',image_url:{url:dataUrl}}]}]})});
+if(!r.ok)throw new Error('Kimi API: HTTP '+r.status);
+const j=await r.json();const txt=j.choices[0].message.content;
+return JSON.parse(txt.slice(txt.indexOf('{'),txt.lastIndexOf('}')+1));
+}
+async function onPhoto(file){
+const dataUrl=await resizeImg(file);
+const rec={id:uid(),ts:Date.now(),img:dataUrl,total:null,cur:S.main};
+S.receipts.unshift(rec);save();
+if(!S.kimiKey){renderReceipts();switchTab('receipts');toast('Чек сохранён в архив. Добавь Kimi-ключ в настройках для авто-разбора');return}
+$('loader').classList.remove('hidden');
+try{
+const j=await kimiReceipt(dataUrl);
+rec.total=j.total||null;if(j.currency)rec.cur=j.currency;save();
+const dup=S.receipts.filter(r=>r.id!==rec.id&&r.total&&r.total===rec.total&&dkey(r.ts)===dkey(rec.ts));
+if(j.items&&j.items.length){
+addTxs(j.items.map(it=>({amount:+it.amount||0,title:it.title||'Чек',cat:CATS.some(c=>c.id===it.category)?it.category:'other',type:'exp'})),['USD','EUR'].includes(j.currency)?j.currency:S.main,rec.id);
+toast('Чек разобран: '+j.items.length+' поз. на '+fmt(j.total||0,rec.cur)+(dup.length?' · похож на дубль!':''));
+}else toast('Чек прочитан: '+fmt(j.total||0,rec.cur)+' — позиции не найдены');
+}catch(e){console.error(e);toast('AI не смог прочитать чек. Он в архиве — добавь сумму вручную')}
+$('loader').classList.add('hidden');
+}
+let deferredPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;$('installBtn').classList.remove('hidden')});
+function bind(){
+$('onbGo').onclick=()=>{S.startBalance=parseFloat($('onbBal').value)||0;S.main=$('onbCur').value;S.name=$('onbName').value.trim();S.setup=true;save();boot()};
+$('addGo').onclick=()=>{const v=$('addText').value.trim();if(!v)return;const items=parseInput(v);if(!items.length){toast('Не нашёл сумму. Пиши так: кофе 5');return}addTxs(items);$('addText').value='';toast('Добавлено: '+items.map(i=>i.title+' '+i.amount).join(' · '))};
+$('addText').addEventListener('keydown',e=>{if(e.key==='Enter')$('addGo').click()});
+$('camBtn').onclick=()=>$('camInput').click();
+$('camInput').addEventListener('change',e=>{if(e.target.files[0])onPhoto(e.target.files[0]);e.target.value=''});
+document.querySelectorAll('.nav-btn').forEach(b=>b.onclick=()=>switchTab(b.dataset.tab));
+$('feed').addEventListener('click',e=>{const id=e.target.dataset&&e.target.dataset.del;if(id){S.txs=S.txs.filter(t=>t.id!==id);save();renderAll();toast('Удалено')}});
+$('repPrev').onclick=()=>{repDate=new Date(repDate.getFullYear(),repDate.getMonth()-1,1);renderReport()};
+$('repNext').onclick=()=>{repDate=new Date(repDate.getFullYear(),repDate.getMonth()+1,1);renderReport()};
+$('csvBtn').onclick=monthCSV;$('pdfBtn').onclick=printPDF;
+$('setBal').onchange=e=>{S.startBalance=parseFloat(e.target.value)||0;save();renderAll()};
+$('setCur').onchange=e=>{S.main=e.target.value;save();renderAll()};
+$('setRate').onchange=e=>{S.eurRate=parseFloat(e.target.value)||S.eurRate;save();renderAll();toast('Курс сохранён')};
+$('rateAuto').onclick=fetchRate;
+$('setKey').onchange=e=>{S.kimiKey=e.target.value.trim();save();toast(S.kimiKey?'Ключ сохранён':'Ключ удалён')};
+$('setModel').onchange=e=>{S.kimiModel=e.target.value.trim();save()};
+$('setTag').onchange=e=>{S.defTag=e.target.value;save()};
+$('keyTest').onclick=async()=>{if(!S.kimiKey){toast('Сначала вставь ключ');return}$('loader').classList.remove('hidden');$('loader').textContent='Проверяю ключ…';
+try{const r=await fetch('https://api.moonshot.ai/v1/models',{headers:{Authorization:'Bearer '+S.kimiKey}});toast(r.ok?'Ключ работает':'Ключ отклонён: HTTP '+r.status)}catch(e){toast('Нет связи с API')}
+$('loader').classList.add('hidden');$('loader').textContent='Kimi читает чек…'};
+$('limList').addEventListener('change',e=>{const id=e.target.dataset&&e.target.dataset.lim;if(id){S.limits=S.limits||{};S.limits[id]=parseFloat(e.target.value)||0;save();renderHome();toast('Лимит сохранён')}});
+$('wipe').onclick=()=>{if(confirm('Стереть ВСЕ данные KUDA? Это необратимо.')){localStorage.removeItem(SK);location.reload()}};
+$('installBtn').onclick=async()=>{if(deferredPrompt){deferredPrompt.prompt();await deferredPrompt.userChoice;deferredPrompt=null;$('installBtn').classList.add('hidden')}};
+}
+function boot(){
+if(!S.setup){$('onb').classList.remove('hidden');return}
+$('hdr').classList.remove('hidden');$('main').classList.remove('hidden');$('nav').classList.remove('hidden');$('addbar').classList.remove('hidden');
+renderAll();
+if(!S.rateFetched){fetchRate();S.rateFetched=true;save()}
+}
+S=load()||{setup:false,name:'',main:'USD',eurRate:0.92,startBalance:0,txs:[],receipts:[],limits:{},kimiKey:'',kimiModel:'moonshot-v1-32k-vision-preview',defTag:'personal',rateFetched:false};
+bind();boot();
+if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
+</script>
+</body>
+</html>
