@@ -1,0 +1,14 @@
+{
+  "name": "КУДА — куда уходят твои деньги",
+  "short_name": "КУДА",
+  "description": "Учёт расходов с AI-разбором чеков. Фото чека или «кофе 5» — и всё посчитано.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0D0F14",
+  "theme_color": "#0D0F14",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
