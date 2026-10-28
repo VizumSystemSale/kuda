@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0D0F14">
+<title>KUDA — куда уходят твои деньги</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{--bg:#0D0F14;--card:rgba(255,255,255,.05);--line:rgba(255,255,255,.09);--txt:#EDEFF3;--mut:#8A90A0;--acc:#2EE6A8;--red:#FF6B6B;--gold:#FFD166;--r:20px}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:Inter,-apple-system,Segoe UI,Roboto,sans-serif;font-size:16px;overscroll-behavior:none}
+.hidden{display:none!important}
+.muted{color:var(--mut)}.tiny{font-size:12px}
+#app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select{font-family:inherit;font-size:16px;background:rgba(255,255,255,.06);border:1px solid var(--line);border-radius:14px;color:var(--txt);padding:12px 14px;width:100%;outline:none}
+input:focus,select:focus{border-color:var(--acc)}
+select option{background:#151923}
+.btn{background:var(--acc);color:#06281C;font-weight:800;border-radius:16px;padding:14px 18px;font-size:16px;width:100%}
+.btn.ghost{background:transparent;border:1px solid var(--acc);color:var(--acc)}
+.chip{border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;color:var(--mut)}
+.logo{width:56px;height:56px;border-radius:18px;background:linear-gradient(135deg,#2EE6A8,#0FAF7B);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:28px;color:#06281C}
+.logo.sm{width:34px;height:34px;border-radius:11px;font-size:18px}
+#onb{display:flex;align-items:center;justify-content:center;min-height:100dvh;padding:24px}
+.onb-card{width:100%;display:flex;flex-direction:column;gap:14px;text-align:center}
+.onb-card h1{font-size:40px;letter-spacing:4px}
+.onb-card label{text-align:left;font-size:13px;color:var(--mut);display:flex;flex-direction:column;gap:6px}
+.onb-card .logo{margin:0 auto}
+#hdr{display:flex;align-items:center;gap:10px;padding:14px 16px;position:sticky;top:0;background:rgba(13,15,20,.85);backdrop-filter:blur(12px);z-index:5}
+.hdr-title{font-weight:800;letter-spacing:3px;flex:1}
+main{flex:1;padding:0 16px 190px}
+.glass{background:var(--card);border:1px solid var(--line);border-radius:var(--r);backdrop-filter:blur(8px)}
+.hero{padding:20px;margin-top:6px}
+.hero-top{display:flex;justify-content:space-between;align-items:center;font-size:13px}
+.hero-bal{font-size:44px;font-weight:800;margin:6px 0 14px;font-variant-numeric:tabular-nums}
+.hero-row{display:flex;gap:24px;flex-wrap:wrap}
+.inc{color:var(--acc);font-weight:600}.exp{color:var(--red);font-weight:600}
+.forecast{margin-top:12px;padding-top:12px;border-top:1px dashed var(--line);font-size:13px;color:var(--mut)}
+.forecast b{color:var(--gold)}
+.today{padding:18px 20px;margin-top:12px;text-align:center;border-color:rgba(46,230,168,.35)}
+.today-num{font-size:36px;font-weight:800;color:var(--acc);font-variant-numeric:tabular-nums}
+#limitWarn{margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.warn{background:rgba(255,107,107,.1);border:1px solid rgba(255,107,107,.35);border-radius:14px;padding:10px 14px;font-size:13px}
+.warn.gold{background:rgba(255,209,102,.08);border-color:rgba(255,209,102,.35)}
+.sec{margin:22px 0 10px;font-size:15px;color:var(--mut);font-weight:600}
+.day-h{font-size:12px;color:var(--mut);margin:14px 0 6px;text-transform:uppercase;letter-spacing:1px}
+.tx{display:flex;align-items:center;gap:12px;padding:12px 14px;background:var(--card);border:1px solid var(--line);border-radius:16px;margin-bottom:8px}
+.tx-ic{width:40px;height:40px;border-radius:13px;background:rgba(255,255,255,.06);display:flex;align-items:center;justify-content:center;font-size:19px;flex-shrink:0}
+.tx-mid{flex:1;min-width:0}
+.tx-t{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tx-s{font-size:12px;color:var(--mut)}
+.tag{font-size:10px;border:1px solid var(--line);border-radius:6px;padding:1px 5px;color:var(--mut)}
+.tx-a{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap;text-align:right}
+.tx-h{font-size:11px;color:var(--mut);font-weight:400}
+.tx-x{color:var(--mut);font-size:18px;padding:4px}
+.empty{text-align:center;color:var(--mut);padding:30px 10px;font-size:14px}
+.rep-head{display:flex;align-items:center;justify-content:space-between;margin:14px 0}
+.rep-title{font-weight:800;font-size:18px}
+.rep-cards{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px}
+.rep-card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;text-align:center}
+.rep-card b{display:block;font-size:17px;margin-top:4px;font-variant-numeric:tabular-nums}
+.bar-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.bar-row .b-ic{width:30px;text-align:center}
+.bar-row .b-n{width:110px;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-wrap{flex:1;height:10px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.bar{height:100%;background:var(--acc);border-radius:99px}
+.bar-row .b-v{font-size:13px;font-weight:600;width:70px;text-align:right;font-variant-numeric:tabular-nums}
+.row{display:flex;gap:10px;margin-top:16px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-top:8px}
+.cal-d{aspect-ratio:1;border-radius:8px;background:rgba(255,255,255,.05);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--mut)}
+.cal-d.l1{background:rgba(46,230,168,.15);color:var(--txt)}
+.cal-d.l2{background:rgba(46,230,168,.35);color:var(--txt)}
+.cal-d.l3{background:rgba(255,209,102,.45);color:#06281C;font-weight:600}
+.cal-d.l4{background:rgba(255,107,107,.55);color:#fff;font-weight:600}
+.advice{background:rgba(255,209,102,.07);border:1px solid rgba(255,209,102,.3);border-radius:16px;padding:14px;font-size:14px;margin-top:14px}
+.goal{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.goal-top{display:flex;justify-content:space-between;font-weight:600;margin-bottom:8px}
+.goal-bar{height:10px;background:rgba(255,255,255,.07);border-radius:99px;overflow:hidden}
+.goal-fill{height:100%;background:linear-gradient(90deg,#2EE6A8,#0FAF7B);border-radius:99px}
+.goal-sub{display:flex;justify-content:space-between;font-size:12px;color:var(--mut);margin-top:6px;align-items:center}
+.mini-btn{border:1px solid var(--acc);color:var(--acc);border-radius:10px;padding:4px 10px;font-size:12px}
+.add-form{display:flex;gap:8px;margin-bottom:14px}
+.add-form input{flex:1}
+.rec-row,.debt-row{display:flex;align-items:center;gap:10px;padding:11px 14px;background:var(--card);border:1px solid var(--line);border-radius:14px;margin-bottom:8px;font-size:14px}
+.rec-row .grow,.debt-row .grow{flex:1;min-width:0}
+.pill{font-size:11px;border-radius:8px;padding:2px 8px;background:rgba(46,230,168,.12);color:var(--acc)}
+.pill.red{background:rgba(255,107,107,.12);color:var(--red)}
+.rc-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rc{border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--card)}
+.rc img{width:100%;height:140px;object-fit:cover;display:block}
+.rc div{padding:8px 10px;font-size:12px;color:var(--mut)}
+.warr{background:rgba(46,230,168,.06);border:1px solid rgba(46,230,168,.3);border-radius:14px;padding:10px 14px;font-size:13px;margin-bottom:8px}
+.set-group{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;margin-bottom:14px;display:flex;flex-direction:column;gap:10px}
+.set-group h4{font-size:14px;color:var(--mut)}
+.set-group label{font-size:13px;color:var(--mut);display:flex;flex-direction:column;gap:6px}
+.lim-row{display:flex;align-items:center;gap:10px}
+.lim-row span{width:150px;font-size:14px}
+.danger{color:var(--red);border:1px solid rgba(255,107,107,.4);border-radius:14px;padding:12px;text-align:center;width:100%}
+#addbar{position:fixed;left:0;right:0;bottom:64px;display:flex;gap:8px;padding:10px 14px;background:rgba(13,15,20,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:10}
+@media(min-width:560px){#addbar,#nav{max-width:520px;left:50%;transform:translateX(-50%)}}
+#addbar input{flex:1}
+.icon-btn{width:48px;height:48px;border-radius:14px;background:rgba(255,255,255,.07);font-size:20px;flex-shrink:0}
+.icon-btn.go{background:var(--acc);color:#06281C}
+#nav{position:fixed;left:0;right:0;bottom:0;height:64px;display:flex;background:rgba(13,15,20,.95);backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:10}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:19px;color:var(--mut)}
+.nav-btn span{font-size:10px}
+.nav-btn.active{color:var(--acc)}
+#toast{position:fixed;left:50%;bottom:140px;transform:translateX(-50%);background:#1C2230;border:1px solid var(--line);border-radius:14px;padding:12px 18px;font-size:14px;z-index:50;opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%;text-align:center}
+#toast.show{opacity:1}
+#loader{position:fixed;inset:0;background:rgba(13,15,20,.85);display:flex;align-items:center;justify-content:center;z-index:60;font-size:15px;color:var(--mut);backdrop-filter:blur(4px)}
+#printArea{display:none}
+@media print{
+body{background:#fff;color:#000}
+#app>*{display:none!important}
+#printArea{display:block!important;color:#000;font-size:13px}
+#printArea h1{font-size:20px;margin-bottom:8px}
+#printArea table{width:100%;border-collapse:collapse;margin-top:10px}
+#printArea td,#printArea th{border:1px solid #999;padding:5px 8px;text-align:left}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<section id="onb" class="hidden">
+<div class="onb-card">
+<div class="logo">K</div>
+<h1>KUDA</h1>
+<p class="muted" data-i18n="slogan">Куда уходят твои деньги — теперь видно</p>
+<label><span data-i18n="yourName">Твоё имя (необязательно)</span><input id="onbName" placeholder="Евгений" autocomplete="off"></label>
+<label><span data-i18n="startBal">Стартовый баланс</span><input id="onbBal" type="number" inputmode="decimal" placeholder="1000"></label>
+<label><span data-i18n="mainCur">Основная валюта</span><select id="onbCur"><option value="USD">$ USD</option><option value="EUR">€ EUR</option></select></label>
+<button class="btn" id="onbGo" data-i18n="start">Начать</button>
+<p class="tiny muted" data-i18n="local">Данные хранятся только на твоём устройстве</p>
+</div>
+</section>
+<header id="hdr" class="hidden">
+<div class="logo sm">K</div>
+<div class="hdr-title">KUDA</div>
+<button id="installBtn" class="chip hidden">⬇ <span data-i18n="install">Установить</span></button>
+</header>
+<main id="main" class="hidden">
+<section id="tab-home" class="tab">
+<div class="hero glass">
+<div class="hero-top"><span class="muted" data-i18n="balance">Остаток</span><span id="heroCur" class="chip"></span></div>
+<div id="heroBal" class="hero-bal">0</div>
+<div class="hero-row">
+<div><div class="muted tiny" data-i18n="incM">Доходы месяца</div><div id="heroInc" class="inc">+0</div></div>
+<div><div class="muted tiny" data-i18n="expM">Траты месяца</div><div id="heroExp" class="exp">−0</div></div>
+<div><div class="muted tiny" data-i18n="net">Итог</div><div id="heroNet">0</div></div>
+</div>
+<div class="forecast" id="forecast"></div>
+</div>
+<div class="today glass">
+<div class="muted" data-i18n="canSpend">Сегодня можно потратить</div>
+<div id="todayNum" class="today-num">0</div>
+<div id="todaySub" class="tiny muted"></div>
+</div>
+<div id="limitWarn"></div>
+<h3 class="sec" data-i18n="feed">Лента</h3>
+<div id="feed"></div>
+</section>
+<section id="tab-report" class="tab hidden">
+<div class="rep-head">
+<button id="repPrev" class="chip">‹</button>
+<div id="repTitle" class="rep-title"></div>
+<button id="repNext" class="chip">›</button>
+</div>
+<div id="repBody"></div>
+<h3 class="sec" data-i18n="calendar">Календарь трат</h3>
+<div id="calHeat" class="cal"></div>
+<div id="advisor"></div>
+<div class="row">
+<button class="btn" id="csvBtn">⬇ Excel</button>
+<button class="btn ghost" id="csvBiz" data-i18n="csvBiz">⬇ Бизнес</button>
+<button class="btn ghost" id="pdfBtn">🖨 PDF</button>
+</div>
+</section>
+<section id="tab-goals" class="tab hidden">
+<h3 class="sec" data-i18n="goals">Цели накоплений</h3>
+<div class="add-form"><input id="goalName" data-i18n-ph="goalPh" placeholder="Например: Машина"><input id="goalTarget" type="number" inputmode="decimal" data-i18n-ph="goalSum" placeholder="Сумма" style="max-width:110px"><button class="mini-btn" id="goalAdd">+</button></div>
+<div id="goalList"></div>
+<h3 class="sec" data-i18n="recurring">Повторяющиеся платежи</h3>
+<div class="add-form"><input id="recTitle" data-i18n-ph="recPh" placeholder="Аренда, связь…"><input id="recAmount" type="number" inputmode="decimal" data-i18n-ph="sum" placeholder="Сумма" style="max-width:90px"><input id="recDay" type="number" min="1" max="31" data-i18n-ph="day" placeholder="День" style="max-width:70px"><button class="mini-btn" id="recAdd">+</button></div>
+<div id="recList"></div>
+<h3 class="sec" data-i18n="debts">Мне должны</h3>
+<div id="debtList"></div>
+</section>
+<section id="tab-receipts" class="tab hidden">
+<h3 class="sec" data-i18n="warranties">Гарантии и возвраты</h3>
+<div id="warrList"></div>
+<h3 class="sec" data-i18n="rcArchive">Архив чеков</h3>
+<div id="rcGrid" class="rc-grid"></div>
+</section>
+<section id="tab-set" class="tab hidden">
+<div class="set-group">
+<h4 data-i18n="setBalCur">Баланс и валюта</h4>
+<label><span data-i18n="startBal">Стартовый баланс</span><input id="setBal" type="number" inputmode="decimal"></label>
+<label><span data-i18n="mainCur">Основная валюта</span><select id="setCur"><option value="USD">$ USD</option><option value="EUR">€ EUR</option></select></label>
+<label><span data-i18n="rate">Курс: 1 USD = EUR</span><input id="setRate" type="number" step="0.0001" inputmode="decimal"></label>
+<button class="chip" id="rateAuto" data-i18n="rateAuto">🔄 Обновить курс автоматически</button>
+</div>
+<div class="set-group">
+<h4 data-i18n="hourly">Твой час работы (для «цены в часах»)</h4>
+<label><span data-i18n="hourlyPh">Сколько стоит 1 час твоей работы</span><input id="setHourly" type="number" inputmode="decimal" placeholder="10"></label>
+</div>
+<div class="set-group">
+<h4 data-i18n="limits">Лимиты по категориям (в месяц, 0 = без лимита)</h4>
+<div id="limList"></div>
+</div>
+<div class="set-group">
+<h4>AI (Kimi)</h4>
+<label>API-ключ Moonshot/Kimi<input id="setKey" type="password" placeholder="sk-..." autocomplete="off"></label>
+<label><span data-i18n="model">Модель</span><input id="setModel" placeholder="moonshot-v1-32k-vision-preview"></label>
+<button class="chip" id="keyTest" data-i18n="keyTest">Проверить ключ</button>
+<p class="tiny muted" data-i18n="noKey">Без ключа чеки сохраняются в архив, сумму вводишь вручную</p>
+</div>
+<div class="set-group">
+<h4 data-i18n="defTag">Тег по умолчанию</h4>
+<select id="setTag"><option value="personal" data-i18n="personal">Личное</option><option value="business" data-i18n="business">Бизнес</option></select>
+</div>
+<div class="set-group">
+<h4 data-i18n="lang">Язык / Language</h4>
+<select id="setLang"><option value="ru">Русский</option><option value="en">English</option></select>
+</div>
+<div class="set-group">
+<h4 data-i18n="legal">Юридическая информация</h4>
+<p class="tiny muted" data-i18n="legalTxt">KUDA — инструмент учёта, а не финансовый советник. AI может ошибаться при распознавании чеков — проверяй суммы. Все данные хранятся локально на твоём устройстве.</p>
+</div>
+<button class="danger" id="wipe" data-i18n="wipe">🗑 Стереть все данные</button>
+<p class="tiny muted" style="text-align:center;margin-top:10px">KUDA v2.0 · сделано с Kimi</p>
+</section>
+</main>
+<div id="addbar" class="hidden">
+<input id="addText" data-i18n-ph="addPh" placeholder="кофе 5 · «ужин 120 на троих» · спроси «сколько на еду?»" autocomplete="off">
+<button id="camBtn" class="icon-btn" title="Чек">📷</button>
+<input type="file" id="camInput" accept="image/*" capture="environment" class="hidden">
+<button id="addGo" class="icon-btn go">➤</button>
+</div>
+<nav id="nav" class="hidden">
+<button data-tab="home" class="nav-btn active">🏠<span data-i18n="nHome">Главная</span></button>
+<button data-tab="report" class="nav-btn">📊<span data-i18n="nRep">Отчёт</span></button>
+<button data-tab="goals" class="nav-btn">🎯<span data-i18n="nGoals">Цели</span></button>
+<button data-tab="receipts" class="nav-btn">🧾<span data-i18n="nRc">Чеки</span></button>
+<button data-tab="set" class="nav-btn">⚙️<span data-i18n="nMore">Ещё</span></button>
+</nav>
+<div id="toast"></div>
+<div id="loader" class="hidden">Kimi читает чек…</div>
+<div id="printArea"></div>
+</div>
+<script src="app.js"></script>
+</body>
+</html>
