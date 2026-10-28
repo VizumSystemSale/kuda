@@ -1,11 +1,11 @@
-const C = 'kuda-v1';
-const A = ['./', './index.html', './manifest.webmanifest', './icon.svg'];
+const C = 'kuda-v2';
+const A = ['./', './index.html', './app.js', './manifest.webmanifest', './icon.svg'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(C).then(c => c.addAll(A)));
   self.skipWaiting();
 });
 self.addEventListener('activate', e => {
-  e.waitUntil(clients.claim());
+  e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => clients.claim()));
 });
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
