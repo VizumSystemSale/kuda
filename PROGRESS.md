@@ -1,4 +1,11 @@
 
+### Багфикс v3.0.3 (29.10.2026)
+- Меню #nav уезжало влево на широких экранах (>560px): в index.html media-query
+  стоит РАНЬШЕ базового правила #nav → left:50% перебивался left:0. Видны были
+  только 3 кнопки из 6. Исправлено в ext.js принудительным CSS с !important
+  (#nav центрируется: left:50%, translateX(-50%), max-width:520px). sw.js → kuda-v3c.
+- УРОК: правки CSS теперь удобнее делать через <style> в ext.js, не трогая index.html.
+
 ## v3.0 (29.10.2026) — STELLAR + AI-провайдеры
 - Новый файл ext.js (~22 КБ): модуль расширений. index.html теперь подключает
   app.js + ext.js, добавлена 6-я вкладка 🚚 STELLAR (data-tab="stellar", #tab-stellar).
