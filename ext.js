@@ -1,4 +1,4 @@
-/* KUDA ext v3.2 — + налоговая папка (🗂 вычеты, CSV за год) + офлайн OCR скриншотов без ИИ (Tesseract.js кэшируется SW) */
+/* KUDA ext v3.3 — + постоянные расходы (трак/трейлер/страховка → Нетто и CPM) + баннер подтверждения автосортировки с ↩ Отмена + OCR eng+rus */
 (function(){
 'use strict';
 const $=s=>document.querySelector(s);
@@ -130,8 +130,8 @@ function injectProviderUI(){
 
 /* ================= STELLAR ================= */
 const SK2='stellar_v1';
-let ST={loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],maint:{lastOil:0,int:15000},weekOff:0,period:'week'};
-try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.period=ST.period||'week';ST.taxYear=ST.taxYear||new Date().getFullYear()}catch(e){}
+let ST={loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],fix:[],maint:{lastOil:0,int:15000},weekOff:0,period:'week'};
+try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.fix=ST.fix||[];ST.period=ST.period||'week';ST.taxYear=ST.taxYear||new Date().getFullYear()}catch(e){}
 const saveST=()=>localStorage.setItem(SK2,JSON.stringify(ST));
 const ECATS={tolls:'🛣 Толлы',scales:'⚖️ Весы',repair:'🔧 Ремонт',ins:'🛡 Страховка',payment:'🚛 Платёж трака',park:'🅿 Парковка',wash:'🚿 Мойка',eld:'📟 ELD',permit:'📄 Пермиты',other:'📦 Прочее'};
 const TCATS=Object.assign({fuel:'⛽ Топливо'},ECATS);
@@ -169,9 +169,12 @@ function weekStats(w){
   const fgal=fuel.reduce((s,f)=>s+(+f.gal||0),0);
   const exp=ST.exp.filter(e=>inW(e.ts,w));
   const ecost=exp.reduce((s,e)=>s+(+e.amount||0),0);
-  const net=gross-fcost-ecost;
-  return{loads,gross,lm,dead,miles,fuel,fcost,fgal,exp,ecost,net,
-    rpm:lm?gross/lm:0,cpm:miles?(fcost+ecost)/miles:0,mpg:fgal&&miles?miles/fgal:0};
+  ST.fix=ST.fix||[];
+  const fixW=ST.fix.reduce((sf,f)=>sf+(+f.amount||0)*(f.per==='month'?12/52:1),0);
+  const fixP=ST.period==='month'?fixW*((w.b-w.a)/864e5)/7:fixW;
+  const net=gross-fcost-ecost-fixP;
+  return{loads,gross,lm,dead,miles,fuel,fcost,fgal,exp,ecost,fixW,fixP,net,
+    rpm:lm?gross/lm:0,cpm:miles?(fcost+ecost+fixP)/miles:0,mpg:fgal&&miles?miles/fgal:0};
 }
 function stParse(line){
   const t=line.toLowerCase().trim();
@@ -188,6 +191,10 @@ function stParse(line){
     ST.mi.unshift({id:uid(),ts:now,miles:nums[0]});
   }else if(/^(долг|мне должны|должна|должен)/.test(t)&&nums.length>=1){
     ST.debts.unshift({id:uid(),ts:now,amount:nums[0],title:txt.replace(/^(долг(и)?|мне должны|должна|должен)\s*/,'')||'Долг компании',settled:false,settledTs:null});
+  }else if(/^(фикс|трак|трейлер|страховка)\s/.test(t)&&nums.length>=1){
+    const per=/мес/.test(t)?'month':'week';
+    const nm=txt.replace(/^(фикс|трак|трейлер|страховка)\s*/i,'').replace(/недел[а-яё]*|месяц[а-яё]*/gi,'').trim()||(/трейлер/.test(t)?'Трейлер':/страховк/.test(t)?'Страховка':'Трак');
+    ST.fix=ST.fix||[];ST.fix.unshift({id:uid(),ts:now,name:nm,amount:nums[0],per:per});
   }else if(nums.length>=1){
     const cat=/весы|scale/.test(t)?'scales':/толл|toll/.test(t)?'tolls':/ремонт|шин|масл|сервис/.test(t)?'repair':/страх/.test(t)?'ins':/плат[её]ж|лизинг|кредит/.test(t)?'payment':/парков/.test(t)?'park':/мойк|омывайк|стекл/.test(t)?'wash':/eld/i.test(t)?'eld':/пермит|permit|штраф/.test(t)?'permit':'other';
     ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:nums[0],tax:true,title:txt||ECATS[cat].replace(/^\S+\s/,'')});
@@ -195,7 +202,7 @@ function stParse(line){
   saveST();return true;
 }
 function card(label,val,cls){return '<div class="st-c"><div class="st-l">'+label+'</div><div class="st-v '+(cls||'')+'">'+val+'</div></div>'}
-let formMode=null;
+let formMode=null,lastAdd=null;
 function renderStellar(){
   const el=$('#tab-stellar');if(!el)return;
   const w=periodRange();const s=weekStats(w);
@@ -205,12 +212,14 @@ function renderStellar(){
   const debtSum=ST.debts.filter(d=>!d.settled).reduce((x,d)=>x+(+d.amount||0),0);
   let h='<div class="st-head"><h2>🚚 STELLAR</h2><div class="st-per"><button class="chip'+(!isM?' on':'')+'" data-act="pweek">Неделя</button><button class="chip'+(isM?' on':'')+'" data-act="pmonth">Месяц</button></div></div>';
   h+='<div class="st-week"><button class="chip" data-act="wprev">‹</button><span>'+periodLabel(w)+'</span><button class="chip" data-act="wnext">›</button></div>';
+  if(lastAdd)h+='<div class="st-okb"><span>✅ Положил: <b>'+esc(lastAdd.msg)+'</b></span><span class="st-r"><button class="chip" data-act="undolast">↩ Отмена</button><button class="chip" data-act="oklast">✓</button></span></div>';
   h+='<div class="st-grid2">'+card('💰 Мне должны',fmt(debtSum),debtSum>0?'gold':'')+card('📈 Нетто '+per,(s.net<0?'−':'')+fmt(Math.abs(s.net)),s.net<0?'red':'acc')+'</div>';
   h+='<div class="st-grid3">'+
     card('Гросс '+per,fmt(s.gross),'acc')+
     card('Мили',Math.round(s.miles).toLocaleString('en-US'))+
     card('Топливо',Math.round(s.fgal)+' gal · '+fmt(s.fcost))+
     card('Расходы трака',fmt(s.ecost))+
+    card('Постоянные '+per,fmt(s.fixP||0),(s.fixP||0)>0?'gold':'')+
     card('$/милю (RPM)','$'+s.rpm.toFixed(2),'acc')+
     card('Себест. мили','$'+s.cpm.toFixed(2),s.cpm>2?'red':'')+
     card('MPG трака',s.mpg?s.mpg.toFixed(1):'—')+
@@ -249,6 +258,8 @@ function renderStellar(){
   /* Расходы */
   h+='<h3 class="st-h">🧾 Затраты на трак за '+per+'</h3>';
   h+=s.exp.length?s.exp.map(e=>'<div class="st-row"><div>'+(ECATS[e.cat]||ECATS.other)+' · '+esc(e.title)+'</div><div class="st-r"><b>'+fmt(e.amount)+'</b><button class="st-x st-tx'+(e.tax?' on':'')+'" title="В налоги" data-act="taxf" data-coll="exp" data-id="'+e.id+'">🗂</button><button class="st-x" data-act="del" data-coll="exp" data-id="'+e.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет затрат за этот период</p>';
+  /* Постоянные расходы */
+  h+=renderFixSection(s);
   /* Налоги */
   h+=renderTaxSection();
   /* ТО */
@@ -317,11 +328,19 @@ async function handleStPhoto(file){
       ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:+o.amount,tax:true,title:o.title||ECATS[cat].replace(/^\S+\s/,'')});
       msg='🧾 '+ECATS[cat]+' · $'+o.amount+(o.title?' · '+o.title:'');
     }else throw new Error('no data');
-    saveST();formMode=null;renderStellar();note('Добавлено: '+msg);
+    saveST();lastAdd={coll:o.type==='fuel'?'fuel':o.type==='load'?'loads':'exp',id:(o.type==='fuel'?ST.fuel:o.type==='load'?ST.loads:ST.exp)[0].id,msg:msg};formMode=null;renderStellar();note('Добавлено: '+msg);
   }catch(e){
     console.error(e);note('AI не разобрал — пробую офлайн OCR…');try{await handleStShot(file)}catch(e2){}
   }
   if(ld){ld.classList.add('hidden');ld.textContent='Kimi читает чек…'}
+}
+/* --- Постоянные расходы (трак/трейлер/страховка — платится даже когда стоишь) --- */
+function renderFixSection(s){
+  const list=ST.fix||[];
+  let h='<h3 class="st-h">📅 Постоянные — '+fmt(s.fixW||0)+'/неделю</h3>';
+  h+='<div class="st-form" style="border-color:var(--line)"><div class="st-fr"><input id="stX_name" type="text" placeholder="Трак / трейлер / страховка…" autocomplete="off"><input id="stX_amt" type="number" inputmode="decimal" placeholder="$"><select id="stX_per"><option value="week">в неделю</option><option value="month">в месяц</option></select></div><button class="btn" data-act="saveFix">+ Добавить постоянный</button></div>';
+  h+=list.length?list.map(f=>'<div class="st-row"><div><b>'+esc(f.name)+'</b></div><div class="st-r"><b>'+fmt(f.amount)+'</b><span class="tiny muted">'+(f.per==='month'?'/мес':'/нед')+'</span><button class="st-x" data-act="del" data-coll="fix" data-id="'+f.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Платёж трака, рент трейлера, страховка, ELD, парковка — то, что платишь даже когда стоишь. Учитывается в Нетто и в себестоимости мили. Можно текстом: «трак 650 неделя», «страховка 1200 месяц».</p>';
+  return h;
 }
 /* --- Налоговая папка (вычеты) --- */
 function taxItems(){
@@ -364,7 +383,7 @@ function getTess(onProg){
   if(tessW)return Promise.resolve(tessW);
   if(!tessLoading)tessLoading=(async()=>{
     if(!window.Tesseract)await loadJs('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
-    tessW=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'&&onProg)onProg(m.progress)}});
+    tessW=await Tesseract.createWorker('eng+rus',1,{logger:m=>{if(m.status==='recognizing text'&&onProg)onProg(m.progress)}});
     return tessW;
   })().finally(()=>{tessLoading=null});
   return tessLoading;
@@ -381,19 +400,19 @@ function ocrAuto(text){
   const byKey=re=>{for(const l of lines){if(re.test(l.toLowerCase())){const vv=lastNum(l);if(vv!=null&&vv>0)return vv}}return null};
   let mx=0;for(const l of lines){const vv=lastNum(l);if(vv!=null&&vv>mx&&vv<=90000)mx=vv}
   const o={type:'expense',cat:'other'};
-  if(/rate confirmation|line ?haul|loaded miles|deadhead|empty miles|pickup|pick ?up|delivery|origin|destination|commodity/.test(low)){
+  if(/rate confirmation|line ?haul|loaded miles|deadhead|empty miles|pickup|pick ?up|delivery|origin|destination|commodity|рейс/.test(low)){
     o.type='load';
     o.pay=byKey(/total|line ?haul|rate/)||mx;
     o.miles=byKey(/loaded miles|total miles|\bmiles\b|\bmi\b/);
     o.dead=byKey(/deadhead|empty/);
-  }else if(/gallon|diesel|unleaded|\bfuel\b|\bpump\b|\bgas\b/.test(low)){
+  }else if(/gallon|diesel|unleaded|\bfuel\b|\bpump\b|\bgas\b|топливо|заправк|галлон|дизель/.test(low)){
     o.type='fuel';
-    const gl=byKey(/gallon|\bgal\b/);
+    const gl=byKey(/gallon|\bgal\b|галлон/);
     if(gl&&gl<2000)o.gallons=gl;
     o.cost=byKey(/total|amount|sale|purchase/)||mx;
   }else{
     o.amount=byKey(/total|amount|balance|sale|price|due/)||mx;
-    o.cat=/scale|weigh/.test(low)?'scales':/toll|e-?zpass|sunpass|\bipass\b/.test(low)?'tolls':/wash|blue beacon/.test(low)?'wash':/park/.test(low)?'park':/insur/.test(low)?'ins':/payment|lease/.test(low)?'payment':/\beld\b|keeptruckin|motive|samsara/.test(low)?'eld':/permit|ifta|\birp\b|fine|ticket/.test(low)?'permit':/repair|tire|tyre|oil|lube|mechanic|parts|autozone|napa|reilly/.test(low)?'repair':'other';
+    o.cat=/scale|weigh|весы/.test(low)?'scales':/toll|e-?zpass|sunpass|\bipass\b|толл/.test(low)?'tolls':/wash|blue beacon|мойк/.test(low)?'wash':/park|парков/.test(low)?'park':/insur|страхов/.test(low)?'ins':/payment|lease|плат[её]ж|лизинг/.test(low)?'payment':/\beld\b|keeptruckin|motive|samsara/.test(low)?'eld':/permit|ifta|\birp\b|fine|ticket|пермит/.test(low)?'permit':/repair|tire|tyre|oil|lube|mechanic|parts|autozone|napa|reilly|ремонт|шин|масл/.test(low)?'repair':'other';
   }
   for(const l of lines){if(/[a-zа-яё]{3,}/i.test(l)&&l.length<60&&!/total|amount|gallon|miles/i.test(l)){o.title=l;break}}
   return o;
@@ -416,8 +435,8 @@ async function handleStShot(file){
       msg='🧾 '+ECATS[o.cat]+' · $'+o.amount;
     }
     if(msg){
-      saveST();formMode=null;ocrDraft=null;renderStellar();
-      note('Со скрина: '+msg+' · помечено 🗂 в налоги');
+      saveST();lastAdd={coll:o.type==='fuel'?'fuel':o.type==='load'?'loads':'exp',id:(o.type==='fuel'?ST.fuel:o.type==='load'?ST.loads:ST.exp)[0].id,msg:msg};formMode=null;ocrDraft=null;renderStellar();
+      note('Проверь зелёную плашку — куда положил. Ошибся? Жми ↩ Отмена');
     }else{
       ocrDraft={text:text,o:o};formMode='ocr';renderStellar();
       note('OCR не уверен — проверь поля и подтверди');
@@ -445,7 +464,7 @@ function ocrFormHtml(){
 function stCSV(){
   const w=periodRange();const s=weekStats(w);const isM=ST.period==='month';
   let c='STELLAR;'+(isM?'month':'week')+';'+dkey(w.a)+';'+dkey(w.b-864e5)+'\n';
-  c+='Gross;'+s.gross+'\nMiles;'+Math.round(s.miles)+'\nLoaded;'+Math.round(s.lm)+'\nDeadhead;'+Math.round(s.dead)+'\nFuel gal;'+s.fgal+'\nFuel $;'+s.fcost+'\nExpenses $;'+s.ecost+'\nNet $;'+s.net+'\nRPM;'+s.rpm.toFixed(2)+'\nCPM;'+s.cpm.toFixed(2)+'\nMPG;'+s.mpg.toFixed(1)+'\n';
+  c+='Gross;'+s.gross+'\nMiles;'+Math.round(s.miles)+'\nLoaded;'+Math.round(s.lm)+'\nDeadhead;'+Math.round(s.dead)+'\nFuel gal;'+s.fgal+'\nFuel $;'+s.fcost+'\nExpenses $;'+s.ecost+'\nFixed $;'+Math.round(s.fixP||0)+'\nNet $;'+s.net+'\nRPM;'+s.rpm.toFixed(2)+'\nCPM;'+s.cpm.toFixed(2)+'\nMPG;'+s.mpg.toFixed(1)+'\n';
   c+='\nLOADS\nDate;Name;Pay;Miles;Deadhead;$/mile;Status\n';
   for(const l of s.loads)c+=dkey(l.ts)+';'+String(l.name||'').replace(/;/g,',')+';'+l.pay+';'+l.miles+';'+(l.dead||0)+';'+(l.miles?(l.pay/l.miles).toFixed(2):'')+';'+LST[l.st]+'\n';
   c+='\nFUEL\nDate;Gallons;Cost;$/gal;City\n';
@@ -454,6 +473,7 @@ function stCSV(){
   for(const e of s.exp)c+=dkey(e.ts)+';'+(ECATS[e.cat]||e.cat)+';'+String(e.title||'').replace(/;/g,',')+';'+e.amount+'\n';
   c+='\nDEBTS\nDate;Title;Amount;Settled\n';
   for(const d of ST.debts)c+=dkey(d.ts)+';'+String(d.title||'').replace(/;/g,',')+';'+d.amount+';'+(d.settled?'yes':'no')+'\n';
+  if(ST.fix&&ST.fix.length){c+='\nFIXED\nName;Amount;Per\n';for(const f of ST.fix)c+=String(f.name||'').replace(/;/g,',')+';'+f.amount+';'+f.per+'\n'}
   const blob=new Blob(['﻿'+c],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='stellar_'+dkey(w.a)+'.csv';a.click();
   note('CSV сохранён');
@@ -505,6 +525,13 @@ function stClick(e){
   else if(act==='del'&&coll&&ST[coll]){ST[coll]=ST[coll].filter(x=>x.id!==id);saveST();renderStellar()}
   else if(act==='oildone'){ST.maint.lastOil=curOdo();saveST();renderStellar();note('Замена масла записана')}
   else if(act==='oilset'){const v=prompt('Одометр на момент замены масла:',curOdo()||'');if(v&&+v>0){ST.maint.lastOil=Math.round(+v);saveST();renderStellar()}}
+  else if(act==='saveFix'){
+    if(!gn('#stX_amt'))return note('Введи сумму');
+    ST.fix=ST.fix||[];ST.fix.unshift({id:uid(),ts:Date.now(),name:gv('#stX_name')||'Фикс',amount:gn('#stX_amt'),per:$('#stX_per')?$('#stX_per').value:'week'});
+    saveST();renderStellar();note('📅 Постоянный расход добавлен');
+  }
+  else if(act==='undolast'&&lastAdd){ST[lastAdd.coll]=(ST[lastAdd.coll]||[]).filter(x=>x.id!==lastAdd.id);saveST();lastAdd=null;renderStellar();note('Отменено — запись удалена')}
+  else if(act==='oklast'){lastAdd=null;renderStellar()}
   else if(act==='taxf'){const it=ST[coll]&&ST[coll].find(x=>x.id===id);if(it){it.tax=!it.tax;saveST();renderStellar();note(it.tax?'Помечено 🗂 в налоги':'Убрано из налогов')}}
   else if(act==='typrev'){ST.taxYear=(ST.taxYear||new Date().getFullYear())-1;saveST();renderStellar()}
   else if(act==='tynext'){ST.taxYear=(ST.taxYear||new Date().getFullYear())+1;saveST();renderStellar()}
@@ -562,7 +589,8 @@ css.textContent='#nav{left:50%!important;right:auto!important;width:100%!importa
 '.st-csv{width:100%;margin-top:8px}'+
 '.st-tx{opacity:.3;font-size:15px}.st-tx.on{opacity:1}'+
 '.st-taxrow{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}'+
-'.st-chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--txt);cursor:pointer}.st-chk input{width:18px;height:18px;accent-color:var(--acc)}';
+'.st-chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--txt);cursor:pointer}.st-chk input{width:18px;height:18px;accent-color:var(--acc)}'+
+'.st-okb{display:flex;justify-content:space-between;align-items:center;gap:8px;background:rgba(46,230,168,.12);border:1px solid var(--acc);border-radius:14px;padding:10px 12px;margin-bottom:10px;font-size:14px}';
 document.head.appendChild(css);
 
 function init(){
