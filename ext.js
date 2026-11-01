@@ -1,4 +1,4 @@
-/* KUDA ext v3.1 — AI-провайдеры + STELLAR (быстрые кнопки, AI-скан фото, неделя/месяц) + фикс меню + автообновление + кнопка установки */
+/* KUDA ext v3.2 — + налоговая папка (🗂 вычеты, CSV за год) + офлайн OCR скриншотов без ИИ (Tesseract.js кэшируется SW) */
 (function(){
 'use strict';
 const $=s=>document.querySelector(s);
@@ -131,9 +131,10 @@ function injectProviderUI(){
 /* ================= STELLAR ================= */
 const SK2='stellar_v1';
 let ST={loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],maint:{lastOil:0,int:15000},weekOff:0,period:'week'};
-try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.period=ST.period||'week'}catch(e){}
+try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.period=ST.period||'week';ST.taxYear=ST.taxYear||new Date().getFullYear()}catch(e){}
 const saveST=()=>localStorage.setItem(SK2,JSON.stringify(ST));
 const ECATS={tolls:'🛣 Толлы',scales:'⚖️ Весы',repair:'🔧 Ремонт',ins:'🛡 Страховка',payment:'🚛 Платёж трака',park:'🅿 Парковка',wash:'🚿 Мойка',eld:'📟 ELD',permit:'📄 Пермиты',other:'📦 Прочее'};
+const TCATS=Object.assign({fuel:'⛽ Топливо'},ECATS);
 const LST={new:'В работе',done:'Доставлен',paid:'Оплачен'};
 function periodRange(){
   const off=ST.weekOff||0;const n=new Date();
@@ -180,7 +181,7 @@ function stParse(line){
   if(/^(рейс|груз|load)/.test(t)&&nums.length>=2){
     ST.loads.unshift({id:uid(),ts:now,pay:nums[0],miles:nums[1],dead:nums[2]||0,name:txt.replace(/^(рейс|груз|load)\s*/,'')||'Рейс',st:'new'});
   }else if(/^(топл|заправка|fuel)/.test(t)&&nums.length>=2){
-    ST.fuel.unshift({id:uid(),ts:now,gal:nums[0],cost:nums[1],note:txt.replace(/^(топливо|топл|заправка|fuel)\s*/,'')});
+    ST.fuel.unshift({id:uid(),ts:now,gal:nums[0],cost:nums[1],tax:true,note:txt.replace(/^(топливо|топл|заправка|fuel)\s*/,'')});
   }else if(/^одо/.test(t)&&nums.length>=1){
     ST.odo.unshift({id:uid(),ts:now,odo:Math.round(nums[0])});
   }else if(/^(мили|миль|miles)/.test(t)&&nums.length>=1){
@@ -189,7 +190,7 @@ function stParse(line){
     ST.debts.unshift({id:uid(),ts:now,amount:nums[0],title:txt.replace(/^(долг(и)?|мне должны|должна|должен)\s*/,'')||'Долг компании',settled:false,settledTs:null});
   }else if(nums.length>=1){
     const cat=/весы|scale/.test(t)?'scales':/толл|toll/.test(t)?'tolls':/ремонт|шин|масл|сервис/.test(t)?'repair':/страх/.test(t)?'ins':/плат[её]ж|лизинг|кредит/.test(t)?'payment':/парков/.test(t)?'park':/мойк|омывайк|стекл/.test(t)?'wash':/eld/i.test(t)?'eld':/пермит|permit|штраф/.test(t)?'permit':'other';
-    ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:nums[0],title:txt||ECATS[cat].replace(/^\S+\s/,'')});
+    ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:nums[0],tax:true,title:txt||ECATS[cat].replace(/^\S+\s/,'')});
   }else return null;
   saveST();return true;
 }
@@ -222,8 +223,11 @@ function renderStellar(){
     '<button class="st-qa-b" data-act="f-load">📦<span>Рейс</span></button>'+
     '<button class="st-qa-b" data-act="f-miles">🛣<span>Мили</span></button>'+
     '<button class="st-qa-b" data-act="f-debt">💰<span>Долг</span></button>'+
-    '<button class="st-qa-b" data-act="f-exp">🧾<span>Расход</span></button></div>';
+    '<button class="st-qa-b" data-act="f-exp">🧾<span>Расход</span></button>'+
+    '<button class="st-qa-b" data-act="f-tax">🗂<span>Налог</span></button>'+
+    '<button class="st-qa-b" data-act="shot">🖼<span>Скрин</span></button></div>';
   h+='<input type="file" id="stCam" accept="image/*" capture="environment" class="hidden">';
+  h+='<input type="file" id="stShot" accept="image/*" class="hidden">';
   h+='<div id="stForm"></div>';
   h+='<details class="st-textin"><summary class="tiny muted">⌨️ Ввод текстом одной строкой (как раньше)</summary><div class="st-quick"><input id="stIn" placeholder="рейс 2400 1100 · топливо 180 620 · одо 452300"><button class="icon-btn go" data-act="add">➤</button></div></details>';
   /* Мне должны */
@@ -241,10 +245,12 @@ function renderStellar(){
   h+=(odoLog.length||miLog.length)?odoLog.map(o=>'<div class="st-row"><div>Одометр: <b>'+(+o.odo).toLocaleString('en-US')+'</b></div><div class="tiny muted">'+dshort(o.ts)+'</div></div>').join('')+miLog.map(m=>'<div class="st-row"><div>За день: <b>'+m.miles+' mi</b></div><div class="tiny muted">'+dshort(m.ts)+'</div></div>').join(''):'<p class="tiny muted">Кнопка 🛣 Мили → введи одометр каждый день</p>';
   /* Топливо */
   h+='<h3 class="st-h">⛽ Топливо за '+per+'</h3>';
-  h+=s.fuel.length?s.fuel.map(f=>'<div class="st-row"><div><b>'+f.gal+' gal</b> · $'+(f.gal?(f.cost/f.gal).toFixed(2):'—')+'/gal'+(f.note?' · '+esc(f.note):'')+'</div><div class="st-r"><b>'+fmt(f.cost)+'</b><button class="st-x" data-act="del" data-coll="fuel" data-id="'+f.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет заправок за этот период</p>';
+  h+=s.fuel.length?s.fuel.map(f=>'<div class="st-row"><div><b>'+f.gal+' gal</b> · $'+(f.gal?(f.cost/f.gal).toFixed(2):'—')+'/gal'+(f.note?' · '+esc(f.note):'')+'</div><div class="st-r"><b>'+fmt(f.cost)+'</b><button class="st-x st-tx'+(f.tax?' on':'')+'" title="В налоги" data-act="taxf" data-coll="fuel" data-id="'+f.id+'">🗂</button><button class="st-x" data-act="del" data-coll="fuel" data-id="'+f.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет заправок за этот период</p>';
   /* Расходы */
   h+='<h3 class="st-h">🧾 Затраты на трак за '+per+'</h3>';
-  h+=s.exp.length?s.exp.map(e=>'<div class="st-row"><div>'+(ECATS[e.cat]||ECATS.other)+' · '+esc(e.title)+'</div><div class="st-r"><b>'+fmt(e.amount)+'</b><button class="st-x" data-act="del" data-coll="exp" data-id="'+e.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет затрат за этот период</p>';
+  h+=s.exp.length?s.exp.map(e=>'<div class="st-row"><div>'+(ECATS[e.cat]||ECATS.other)+' · '+esc(e.title)+'</div><div class="st-r"><b>'+fmt(e.amount)+'</b><button class="st-x st-tx'+(e.tax?' on':'')+'" title="В налоги" data-act="taxf" data-coll="exp" data-id="'+e.id+'">🗂</button><button class="st-x" data-act="del" data-coll="exp" data-id="'+e.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет затрат за этот период</p>';
+  /* Налоги */
+  h+=renderTaxSection();
   /* ТО */
   const co=curOdo();
   const since=M.lastOil&&co?co-M.lastOil:null;
@@ -257,6 +263,8 @@ function renderStellar(){
   if(inp)inp.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();stAdd()}};
   const cam=$('#stCam');
   if(cam)cam.onchange=e=>{if(e.target.files[0])handleStPhoto(e.target.files[0]);e.target.value=''};
+  const shot=$('#stShot');
+  if(shot)shot.onchange=e=>{if(e.target.files[0])handleStShot(e.target.files[0]);e.target.value=''};
 }
 function renderForm(mode){
   const box=$('#stForm');if(!box)return;
@@ -267,11 +275,13 @@ function renderForm(mode){
   else if(mode==='load')h='<div class="st-form"><div class="st-ft">📦 Рейс</div><div class="st-fr">'+inp('stL_pay','Оплата $')+inp('stL_mi','Мили гружёные')+'</div><div class="st-fr">'+inp('stL_dead','Порожние мили (необяз.)')+'</div><div class="st-fr">'+tin('stL_from','Откуда (город)')+tin('stL_to','Куда (город)')+'</div><button class="btn" data-act="saveLoad">+ Добавить рейс</button></div>';
   else if(mode==='miles')h='<div class="st-form"><div class="st-ft">🛣 Мили</div><div class="st-fr">'+inp('stM_odo','Одометр сейчас')+'</div><div class="tiny muted" style="margin:2px 0 6px">или</div><div class="st-fr">'+inp('stM_mi','Миль за сегодня')+'</div><button class="btn" data-act="saveMiles">+ Записать</button></div>';
   else if(mode==='debt')h='<div class="st-form"><div class="st-ft">💰 Компания должна</div><div class="st-fr">'+inp('stD_amt','Сумма $')+'</div><div class="st-fr">'+tin('stD_title','За что (толлы, рейс, возврат…)')+'</div><button class="btn" data-act="saveDebt">+ Добавить долг</button></div>';
-  else if(mode==='exp'){
+  else if(mode==='exp'||mode==='tax'){
     let opts='';for(const k in ECATS)opts+='<option value="'+k+'">'+ECATS[k]+'</option>';
-    h='<div class="st-form"><div class="st-ft">🧾 Затрата на трак</div><div class="st-fr">'+inp('stE_amt','Сумма $')+'</div><div class="st-fr"><select id="stE_cat">'+opts+'</select></div><div class="st-fr">'+tin('stE_title','Что купил (масло, шины, весы…)')+'</div><button class="btn" data-act="saveExp">+ Добавить затрату</button></div>';
+    h='<div class="st-form"><div class="st-ft">'+(mode==='tax'?'🗂 Налоговый расход':'🧾 Затрата на трак')+'</div><div class="st-fr">'+inp('stE_amt','Сумма $')+'</div><div class="st-fr"><select id="stE_cat">'+opts+'</select></div><div class="st-fr">'+tin('stE_title','Что купил (масло, шины, весы…)')+'</div><label class="st-chk"><input type="checkbox" id="stE_tax" checked> 🗂 В налоги (вычет)</label><button class="btn" data-act="saveExp">+ Добавить затрату</button></div>';
   }
+  if(mode==='ocr'&&ocrDraft)h=ocrFormHtml();
   box.innerHTML=h;
+  if(mode==='ocr'&&ocrDraft&&ocrDraft.o){const o=ocrDraft.o;const sv=(id,vv)=>{const ee=$(id);if(ee&&(vv||vv===0))ee.value=vv};sv('#stO_amt',o.amount||o.cost||o.pay);sv('#stO_gal',o.gallons);sv('#stO_mi',o.miles);sv('#stO_title',o.title||o.city);const cc=$('#stO_cat');if(cc&&o.cat)cc.value=o.cat}
   const f=box.querySelector('input');if(f)f.focus();
 }
 function gv(id){const e=$(id);return e?e.value.trim():''}
@@ -285,7 +295,7 @@ function stAdd(){
 /* --- AI-скан фото: памп/чек/скрин rate con/весы --- */
 function resizeSt(file){return new Promise(res=>{const rd=new FileReader();rd.onload=e=>{const img=new Image();img.onload=()=>{const c=document.createElement('canvas');const k=Math.min(1,1400/Math.max(img.width,img.height));c.width=Math.round(img.width*k);c.height=Math.round(img.height*k);c.getContext('2d').drawImage(img,0,0,c.width,c.height);res(c.toDataURL('image/jpeg',0.8))};img.src=e.target.result};rd.readAsDataURL(file)})}
 async function handleStPhoto(file){
-  if(!hasAiKey()){note('Сначала добавь AI-ключ: ⚙️ Ещё → AI');return}
+  if(!hasAiKey()){note('Нет AI-ключа — читаю офлайн (OCR на устройстве)…');return handleStShot(file)}
   const ld=$('#loader');if(ld){ld.textContent='AI читает фото…';ld.classList.remove('hidden')}
   try{
     const dataUrl=await resizeSt(file);
@@ -296,7 +306,7 @@ async function handleStPhoto(file){
     const o=JSON.parse(txt.slice(txt.indexOf('{'),txt.lastIndexOf('}')+1));
     const now=Date.now();let msg='';
     if(o.type==='fuel'&&+o.gallons&&+o.cost){
-      ST.fuel.unshift({id:uid(),ts:now,gal:+o.gallons,cost:+o.cost,note:o.city||''});
+      ST.fuel.unshift({id:uid(),ts:now,gal:+o.gallons,cost:+o.cost,note:o.city||'',tax:true});
       msg='⛽ '+o.gallons+' gal · $'+o.cost+(o.city?' · '+o.city:'');
     }else if(o.type==='load'&&+o.pay){
       const name=((o.from||'')+'→'+(o.to||'')).replace(/^→|→$/g,'')||'Рейс';
@@ -304,14 +314,132 @@ async function handleStPhoto(file){
       msg='📦 $'+o.pay+' · '+(+o.miles||0)+' mi · '+name;
     }else if(o.type==='expense'&&+o.amount){
       const cat=ECATS[o.category]?o.category:'other';
-      ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:+o.amount,title:o.title||ECATS[cat].replace(/^\S+\s/,'')});
+      ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:+o.amount,tax:true,title:o.title||ECATS[cat].replace(/^\S+\s/,'')});
       msg='🧾 '+ECATS[cat]+' · $'+o.amount+(o.title?' · '+o.title:'');
     }else throw new Error('no data');
     saveST();formMode=null;renderStellar();note('Добавлено: '+msg);
   }catch(e){
-    console.error(e);note('AI не разобрал фото — введи кнопками ниже');
+    console.error(e);note('AI не разобрал — пробую офлайн OCR…');try{await handleStShot(file)}catch(e2){}
   }
   if(ld){ld.classList.add('hidden');ld.textContent='Kimi читает чек…'}
+}
+/* --- Налоговая папка (вычеты) --- */
+function taxItems(){
+  const a=[];
+  for(const e of ST.exp)if(e.tax)a.push({ts:e.ts,cat:e.cat||'other',title:e.title||'',amount:+e.amount||0,kind:'exp',id:e.id});
+  for(const f of ST.fuel)if(f.tax)a.push({ts:f.ts,cat:'fuel',title:f.gal+' gal'+(f.note?' · '+f.note:''),amount:+f.cost||0,kind:'fuel',id:f.id});
+  return a.sort((x,y)=>y.ts-x.ts);
+}
+function renderTaxSection(){
+  const y=ST.taxYear||new Date().getFullYear();
+  const all=taxItems().filter(x=>new Date(x.ts).getFullYear()===y);
+  const tot=all.reduce((s,x)=>s+x.amount,0);
+  let h='<h3 class="st-h">🗂 Налоги — вычеты за '+y+': '+fmt(tot)+'</h3>';
+  h+='<div class="st-week"><button class="chip" data-act="typrev">‹</button><span>'+y+' год</span><button class="chip" data-act="tynext">›</button></div>';
+  const byCat={};for(const x of all)byCat[x.cat]=(byCat[x.cat]||0)+x.amount;
+  const cats=Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
+  if(cats.length)h+='<div class="st-c" style="margin-bottom:8px">'+cats.map(c=>'<div class="st-taxrow"><span>'+(TCATS[c]||c)+'</span><b>'+fmt(byCat[c])+'</b></div>').join('')+'</div>';
+  h+=all.length?all.slice(0,25).map(x=>'<div class="st-row"><div>'+(TCATS[x.cat]||x.cat)+' · '+esc(x.title)+'<div class="tiny muted">'+dkey(x.ts)+'</div></div><div class="st-r"><b>'+fmt(x.amount)+'</b><button class="st-x st-tx on" title="Убрать из налогов" data-act="taxf" data-coll="'+x.kind+'" data-id="'+x.id+'">🗂</button></div></div>').join(''):'<p class="tiny muted">Пусто за '+y+'. Отмечай записи кнопкой 🗂 в списках или добавляй через «🗂 Налог» — сюда идут вычеты: затраты и топливо.</p>';
+  if(all.length>25)h+='<p class="tiny muted">Показаны 25 из '+all.length+' — в CSV попадут все.</p>';
+  h+='<button class="chip st-csv" data-act="taxcsv">⬇ Налоговый отчёт за '+y+' (CSV)</button>';
+  return h;
+}
+function stTaxCSV(){
+  const y=ST.taxYear||new Date().getFullYear();
+  const all=taxItems().filter(x=>new Date(x.ts).getFullYear()===y).sort((a,b)=>a.ts-b.ts);
+  let c='STELLAR TAX;'+y+'\nDate;Category;Title;Amount\n';
+  const byM={},byC={};
+  for(const x of all){c+=dkey(x.ts)+';'+String(TCATS[x.cat]||x.cat).replace(/;/g,',')+';'+String(x.title||'').replace(/;/g,',')+';'+x.amount+'\n';const m=dkey(x.ts).slice(0,7);byM[m]=(byM[m]||0)+x.amount;byC[x.cat]=(byC[x.cat]||0)+x.amount}
+  c+='\nBY MONTH\nMonth;Total\n';for(const m in byM)c+=m+';'+byM[m]+'\n';
+  c+='\nBY CATEGORY\nCategory;Total\n';for(const k in byC)c+=String(TCATS[k]||k).replace(/;/g,',')+';'+byC[k]+'\n';
+  c+='\nTOTAL;;;'+all.reduce((s,x)=>s+x.amount,0)+'\n';
+  const blob=new Blob(['\ufeff'+c],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='stellar_tax_'+y+'.csv';a.click();
+  note('Налоговый CSV сохранён');
+}
+/* --- Офлайн OCR скриншотов: Tesseract.js, движок и язык кэшируются SW — дальше без интернета и без ИИ --- */
+let ocrDraft=null,tessW=null,tessLoading=null;
+function loadJs(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('load '+src));document.head.appendChild(s)})}
+function getTess(onProg){
+  if(tessW)return Promise.resolve(tessW);
+  if(!tessLoading)tessLoading=(async()=>{
+    if(!window.Tesseract)await loadJs('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js');
+    tessW=await Tesseract.createWorker('eng',1,{logger:m=>{if(m.status==='recognizing text'&&onProg)onProg(m.progress)}});
+    return tessW;
+  })().finally(()=>{tessLoading=null});
+  return tessLoading;
+}
+async function ocrImage(dataUrl,onProg){
+  const w=await getTess(onProg);
+  const r=await w.recognize(dataUrl);
+  return (r&&r.data&&r.data.text)||'';
+}
+function lastNum(s){const re=/\$?\s*(\d{1,3}(?:[ ,]?\d{3})*(?:\.\d{1,2})?)/g;let m,last=null;while((m=re.exec(s))){const vv=parseFloat(m[1].replace(/[ ,]/g,''));if(!isNaN(vv))last=vv}return last}
+function ocrAuto(text){
+  const low=' '+text.toLowerCase().replace(/\s+/g,' ')+' ';
+  const lines=text.split('\n').map(s=>s.replace(/\s+/g,' ').trim()).filter(Boolean);
+  const byKey=re=>{for(const l of lines){if(re.test(l.toLowerCase())){const vv=lastNum(l);if(vv!=null&&vv>0)return vv}}return null};
+  let mx=0;for(const l of lines){const vv=lastNum(l);if(vv!=null&&vv>mx&&vv<=90000)mx=vv}
+  const o={type:'expense',cat:'other'};
+  if(/rate confirmation|line ?haul|loaded miles|deadhead|empty miles|pickup|pick ?up|delivery|origin|destination|commodity/.test(low)){
+    o.type='load';
+    o.pay=byKey(/total|line ?haul|rate/)||mx;
+    o.miles=byKey(/loaded miles|total miles|\bmiles\b|\bmi\b/);
+    o.dead=byKey(/deadhead|empty/);
+  }else if(/gallon|diesel|unleaded|\bfuel\b|\bpump\b|\bgas\b/.test(low)){
+    o.type='fuel';
+    const gl=byKey(/gallon|\bgal\b/);
+    if(gl&&gl<2000)o.gallons=gl;
+    o.cost=byKey(/total|amount|sale|purchase/)||mx;
+  }else{
+    o.amount=byKey(/total|amount|balance|sale|price|due/)||mx;
+    o.cat=/scale|weigh/.test(low)?'scales':/toll|e-?zpass|sunpass|\bipass\b/.test(low)?'tolls':/wash|blue beacon/.test(low)?'wash':/park/.test(low)?'park':/insur/.test(low)?'ins':/payment|lease/.test(low)?'payment':/\beld\b|keeptruckin|motive|samsara/.test(low)?'eld':/permit|ifta|\birp\b|fine|ticket/.test(low)?'permit':/repair|tire|tyre|oil|lube|mechanic|parts|autozone|napa|reilly/.test(low)?'repair':'other';
+  }
+  for(const l of lines){if(/[a-zа-яё]{3,}/i.test(l)&&l.length<60&&!/total|amount|gallon|miles/i.test(l)){o.title=l;break}}
+  return o;
+}
+async function handleStShot(file){
+  const ld=$('#loader');
+  try{
+    if(ld){ld.textContent='Офлайн OCR: загрузка движка…';ld.classList.remove('hidden')}
+    const dataUrl=await resizeSt(file);
+    const text=await ocrImage(dataUrl,p=>{if(ld)ld.textContent='Офлайн OCR: '+Math.round(p*100)+'%'});
+    const o=ocrAuto(text);const now=Date.now();let msg='';
+    if(o.type==='fuel'&&+o.gallons&&+o.cost){
+      ST.fuel.unshift({id:uid(),ts:now,gal:+o.gallons,cost:+o.cost,note:o.title||'скрин',tax:true});
+      msg='⛽ '+o.gallons+' gal · $'+o.cost;
+    }else if(o.type==='load'&&+o.pay){
+      ST.loads.unshift({id:uid(),ts:now,pay:+o.pay,miles:+o.miles||0,dead:+o.dead||0,name:o.title||'Рейс',st:'new'});
+      msg='📦 $'+o.pay+(o.miles?' · '+Math.round(o.miles)+' mi':'');
+    }else if(o.type==='expense'&&+o.amount){
+      ST.exp.unshift({id:uid(),ts:now,cat:o.cat,amount:+o.amount,title:o.title||ECATS[o.cat].replace(/^\S+\s/,''),tax:true});
+      msg='🧾 '+ECATS[o.cat]+' · $'+o.amount;
+    }
+    if(msg){
+      saveST();formMode=null;ocrDraft=null;renderStellar();
+      note('Со скрина: '+msg+' · помечено 🗂 в налоги');
+    }else{
+      ocrDraft={text:text,o:o};formMode='ocr';renderStellar();
+      note('OCR не уверен — проверь поля и подтверди');
+    }
+  }catch(e){
+    console.error(e);
+    note(navigator.onLine===false?'Нужен интернет один раз — скачать OCR-движок':'OCR не сработал — введи кнопками ниже');
+  }
+  if(ld){ld.classList.add('hidden');ld.textContent='Kimi читает чек…'}
+}
+function ocrFormHtml(){
+  const o=(ocrDraft&&ocrDraft.o)||{};
+  let opts='';for(const k in ECATS)opts+='<option value="'+k+'">'+ECATS[k]+'</option>';
+  return '<div class="st-form"><div class="st-ft">🖼 Скрин распознан офлайн — проверь</div>'+
+  '<div class="st-fr"><select id="stO_type"><option value="expense"'+((o.type!=='fuel'&&o.type!=='load')?' selected':'')+'>🧾 Расход</option><option value="fuel"'+(o.type==='fuel'?' selected':'')+'>⛽ Топливо</option><option value="load"'+(o.type==='load'?' selected':'')+'>📦 Рейс</option></select></div>'+
+  '<div class="st-fr"><input id="stO_amt" type="number" inputmode="decimal" placeholder="Сумма $"><input id="stO_gal" type="number" inputmode="decimal" placeholder="Галлоны (топл.)"></div>'+
+  '<div class="st-fr"><input id="stO_mi" type="number" inputmode="decimal" placeholder="Мили (рейс)"></div>'+
+  '<div class="st-fr"><select id="stO_cat">'+opts+'</select></div>'+
+  '<div class="st-fr"><input id="stO_title" type="text" placeholder="Название / город" autocomplete="off"></div>'+
+  '<label class="st-chk"><input type="checkbox" id="stO_tax" checked> 🗂 В налоги (вычет)</label>'+
+  (ocrDraft&&ocrDraft.text?'<details class="st-textin"><summary class="tiny muted">Распознанный текст</summary><div class="tiny muted" style="white-space:pre-wrap">'+esc(ocrDraft.text.slice(0,1500))+'</div></details>':'')+
+  '<button class="btn" data-act="saveOcr">+ Добавить</button></div>';
 }
 /* --- CSV --- */
 function stCSV(){
@@ -340,10 +468,11 @@ function stClick(e){
   else if(act==='pmonth'){ST.period='month';ST.weekOff=0;saveST();renderStellar()}
   else if(act==='add')stAdd();
   else if(act==='cam'){const c=$('#stCam');if(c)c.click()}
-  else if(act==='f-fuel'||act==='f-load'||act==='f-miles'||act==='f-debt'||act==='f-exp'){const m=act.slice(2);formMode=(formMode===m?null:m);renderStellar()}
+  else if(act==='shot'){const c=$('#stShot');if(c)c.click()}
+  else if(act==='f-fuel'||act==='f-load'||act==='f-miles'||act==='f-debt'||act==='f-exp'||act==='f-tax'){const m=act.slice(2);formMode=(formMode===m?null:m);renderStellar()}
   else if(act==='saveFuel'){
     if(!gn('#stF_gal')||!gn('#stF_cost'))return note('Введи галлоны и сумму');
-    ST.fuel.unshift({id:uid(),ts:Date.now(),gal:gn('#stF_gal'),cost:gn('#stF_cost'),note:gv('#stF_city')});
+    ST.fuel.unshift({id:uid(),ts:Date.now(),gal:gn('#stF_gal'),cost:gn('#stF_cost'),note:gv('#stF_city'),tax:true});
     saveST();formMode=null;renderStellar();note('⛽ Заправка записана');
   }
   else if(act==='saveLoad'){
@@ -366,7 +495,7 @@ function stClick(e){
   else if(act==='saveExp'){
     if(!gn('#stE_amt'))return note('Введи сумму');
     const cat=$('#stE_cat')?$('#stE_cat').value:'other';
-    ST.exp.unshift({id:uid(),ts:Date.now(),cat:cat,amount:gn('#stE_amt'),title:gv('#stE_title')||ECATS[cat].replace(/^\S+\s/,'')});
+    ST.exp.unshift({id:uid(),ts:Date.now(),cat:cat,amount:gn('#stE_amt'),tax:$('#stE_tax')?$('#stE_tax').checked:true,title:gv('#stE_title')||ECATS[cat].replace(/^\S+\s/,'')});
     saveST();formMode=null;renderStellar();note('🧾 Затрата записана');
   }
   else if(act==='settle'){const d=ST.debts.find(x=>x.id===id);if(d){d.settled=true;d.settledTs=Date.now();saveST();renderStellar();note('Отмечено как оплаченное')}}
@@ -376,6 +505,18 @@ function stClick(e){
   else if(act==='del'&&coll&&ST[coll]){ST[coll]=ST[coll].filter(x=>x.id!==id);saveST();renderStellar()}
   else if(act==='oildone'){ST.maint.lastOil=curOdo();saveST();renderStellar();note('Замена масла записана')}
   else if(act==='oilset'){const v=prompt('Одометр на момент замены масла:',curOdo()||'');if(v&&+v>0){ST.maint.lastOil=Math.round(+v);saveST();renderStellar()}}
+  else if(act==='taxf'){const it=ST[coll]&&ST[coll].find(x=>x.id===id);if(it){it.tax=!it.tax;saveST();renderStellar();note(it.tax?'Помечено 🗂 в налоги':'Убрано из налогов')}}
+  else if(act==='typrev'){ST.taxYear=(ST.taxYear||new Date().getFullYear())-1;saveST();renderStellar()}
+  else if(act==='tynext'){ST.taxYear=(ST.taxYear||new Date().getFullYear())+1;saveST();renderStellar()}
+  else if(act==='taxcsv')stTaxCSV();
+  else if(act==='saveOcr'){
+    const tp=$('#stO_type')?$('#stO_type').value:'expense';
+    const tx=$('#stO_tax')?$('#stO_tax').checked:true;
+    if(tp==='fuel'){if(!gn('#stO_gal')||!gn('#stO_amt'))return note('Введи галлоны и сумму');ST.fuel.unshift({id:uid(),ts:Date.now(),gal:gn('#stO_gal'),cost:gn('#stO_amt'),note:gv('#stO_title'),tax:tx});note('⛽ Заправка записана')}
+    else if(tp==='load'){if(!gn('#stO_amt'))return note('Введи оплату рейса');ST.loads.unshift({id:uid(),ts:Date.now(),pay:gn('#stO_amt'),miles:gn('#stO_mi'),dead:0,name:gv('#stO_title')||'Рейс',st:'new'});note('📦 Рейс добавлен')}
+    else{if(!gn('#stO_amt'))return note('Введи сумму');const cat2=$('#stO_cat')?$('#stO_cat').value:'other';ST.exp.unshift({id:uid(),ts:Date.now(),cat:cat2,amount:gn('#stO_amt'),title:gv('#stO_title')||ECATS[cat2].replace(/^\S+\s/,''),tax:tx});note('🧾 Затрата записана')}
+    saveST();formMode=null;ocrDraft=null;renderStellar();
+  }
   else if(act==='csv')stCSV();
 }
 function stChange(e){
@@ -395,7 +536,7 @@ css.textContent='#nav{left:50%!important;right:auto!important;width:100%!importa
 '.st-l{font-size:11px;color:var(--mut);margin-bottom:4px}'+
 '.st-v{font-size:18px;font-weight:700;word-break:break-word}'+
 '.st-v.acc{color:var(--acc)}.st-v.red{color:var(--red)}.st-v.gold{color:var(--gold)}'+
-'.st-qa{display:grid;grid-template-columns:repeat(6,1fr);gap:7px;margin-bottom:10px}'+
+'.st-qa{display:grid;grid-template-columns:repeat(4,1fr);gap:7px;margin-bottom:10px}'+
 '.st-qa-b{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px 2px;font-size:22px;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--txt)}'+
 '.st-qa-b span{font-size:10px;color:var(--mut)}'+
 '.st-qa-b.acc{border-color:rgba(46,230,168,.5)}'+
@@ -418,7 +559,10 @@ css.textContent='#nav{left:50%!important;right:auto!important;width:100%!importa
 '.st-to{margin-bottom:14px}'+
 '.st-to .st-r{margin-top:8px;flex-wrap:wrap;justify-content:flex-start}'+
 '.st-mini{width:80px;background:var(--bg);border:1px solid var(--line);border-radius:8px;color:var(--txt);padding:3px 6px;font-size:13px}'+
-'.st-csv{width:100%;margin-top:8px}';
+'.st-csv{width:100%;margin-top:8px}'+
+'.st-tx{opacity:.3;font-size:15px}.st-tx.on{opacity:1}'+
+'.st-taxrow{display:flex;justify-content:space-between;font-size:13px;padding:3px 0}'+
+'.st-chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--txt);cursor:pointer}.st-chk input{width:18px;height:18px;accent-color:var(--acc)}';
 document.head.appendChild(css);
 
 function init(){
