@@ -1,4 +1,4 @@
-/* KUDA ext v3.4 — + категории ✈️🚕🏨🍔 + фото чеков хранятся в IndexedDB (📎 у записи) + экспорт всех чеков за год в HTML для печати */
+/* KUDA ext v3.5 — + корзина: удалённые записи и фото восстанавливаются (🗑 Корзина внизу STELLAR) */
 (function(){
 'use strict';
 const $=s=>document.querySelector(s);
@@ -130,8 +130,8 @@ function injectProviderUI(){
 
 /* ================= STELLAR ================= */
 const SK2='stellar_v1';
-let ST={loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],fix:[],maint:{lastOil:0,int:15000},weekOff:0,period:'week'};
-try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.fix=ST.fix||[];ST.period=ST.period||'week';ST.taxYear=ST.taxYear||new Date().getFullYear()}catch(e){}
+let ST={loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],fix:[],trash:[],maint:{lastOil:0,int:15000},weekOff:0,period:'week'};
+try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.fix=ST.fix||[];ST.trash=ST.trash||[];ST.period=ST.period||'week';ST.taxYear=ST.taxYear||new Date().getFullYear()}catch(e){}
 const saveST=()=>localStorage.setItem(SK2,JSON.stringify(ST));
 const ECATS={tolls:'🛣 Толлы',scales:'⚖️ Весы',repair:'🔧 Ремонт',ins:'🛡 Страховка',payment:'🚛 Платёж трака',park:'🅿 Парковка',wash:'🚿 Мойка',eld:'📟 ELD',permit:'📄 Пермиты',travel:'✈️ Перелёт',trans:'🚕 Убер/такси',hotel:'🏨 Отель',food:'🍔 Еда',other:'📦 Прочее'};
 const TCATS=Object.assign({fuel:'⛽ Топливо'},ECATS);
@@ -262,6 +262,18 @@ function renderStellar(){
   h+=renderFixSection(s);
   /* Налоги */
   h+=renderTaxSection();
+  /* Корзина — удалённое можно вернуть */
+  const trash=ST.trash||[];
+  if(trash.length){
+    h+='<h3 class="st-h">🗑 Корзина ('+trash.length+')</h3>';
+    h+=trash.slice(0,30).map(tr=>{
+      const it=tr.item;
+      const lbl=tr.coll==='fuel'?('⛽ '+it.gal+' gal · $'+it.cost):tr.coll==='loads'?('📦 '+esc(it.name||'')+' · $'+it.pay):tr.coll==='debts'?('💰 '+esc(it.title||'')+' · $'+it.amount):tr.coll==='fix'?('📅 '+esc(it.name||'')+' · $'+it.amount):((ECATS[it.cat]||'🧾')+' '+esc(it.title||'')+' · $'+it.amount);
+      return '<div class="st-row off"><div>'+lbl+'<div class="tiny muted">удалено '+dshort(tr.ts)+(it.img?' · 📎 фото на месте':'')+'</div></div><div class="st-r"><button class="chip" data-act="restore" data-id="'+it.id+'">↩ Вернуть</button><button class="st-x" data-act="wipe" data-id="'+it.id+'" title="Удалить навсегда">✕</button></div></div>';
+    }).join('');
+    if(trash.length>30)h+='<p class="tiny muted">Показаны 30 из '+trash.length+'</p>';
+    h+='<button class="chip st-csv" data-act="wipeall">🗑 Очистить корзину навсегда</button>';
+  }
   /* ТО */
   const co=curOdo();
   const since=M.lastOil&&co?co-M.lastOil:null;
@@ -562,7 +574,7 @@ function stClick(e){
   else if(act==='unsettle'){const d=ST.debts.find(x=>x.id===id);if(d){d.settled=false;d.settledTs=null;saveST();renderStellar()}}
   else if(act==='ldone'){const l=ST.loads.find(x=>x.id===id);if(l){l.st='done';saveST();renderStellar()}}
   else if(act==='lpaid'){const l=ST.loads.find(x=>x.id===id);if(l){l.st='paid';saveST();renderStellar();note('Рейс оплачен')}}
-  else if(act==='del'&&coll&&ST[coll]){const rec=ST[coll].find(x=>x.id===id);if(rec&&rec.img)imgDel(rec.img);ST[coll]=ST[coll].filter(x=>x.id!==id);saveST();renderStellar()}
+  else if(act==='del'&&coll&&ST[coll]){const rec=ST[coll].find(x=>x.id===id);if(rec){ST.trash=ST.trash||[];ST.trash.unshift({coll:coll,item:rec,ts:Date.now()});ST[coll]=ST[coll].filter(x=>x.id!==id);saveST();renderStellar();note('В корзине 🗑 — вернуть можно внизу страницы')}}
   else if(act==='oildone'){ST.maint.lastOil=curOdo();saveST();renderStellar();note('Замена масла записана')}
   else if(act==='oilset'){const v=prompt('Одометр на момент замены масла:',curOdo()||'');if(v&&+v>0){ST.maint.lastOil=Math.round(+v);saveST();renderStellar()}}
   else if(act==='saveFix'){
@@ -570,13 +582,16 @@ function stClick(e){
     ST.fix=ST.fix||[];ST.fix.unshift({id:uid(),ts:Date.now(),name:gv('#stX_name')||'Фикс',amount:gn('#stX_amt'),per:$('#stX_per')?$('#stX_per').value:'week'});
     saveST();renderStellar();note('📅 Постоянный расход добавлен');
   }
-  else if(act==='undolast'&&lastAdd){const rec=(ST[lastAdd.coll]||[]).find(x=>x.id===lastAdd.id);if(rec&&rec.img)imgDel(rec.img);ST[lastAdd.coll]=(ST[lastAdd.coll]||[]).filter(x=>x.id!==lastAdd.id);saveST();lastAdd=null;renderStellar();note('Отменено — запись удалена')}
+  else if(act==='undolast'&&lastAdd){const rec=(ST[lastAdd.coll]||[]).find(x=>x.id===lastAdd.id);if(rec){ST.trash=ST.trash||[];ST.trash.unshift({coll:lastAdd.coll,item:rec,ts:Date.now()})}ST[lastAdd.coll]=(ST[lastAdd.coll]||[]).filter(x=>x.id!==lastAdd.id);saveST();lastAdd=null;renderStellar();note('Отменено — лежит в корзине 🗑, можно вернуть')}
   else if(act==='oklast'){lastAdd=null;renderStellar()}
   else if(act==='taxf'){const it=ST[coll]&&ST[coll].find(x=>x.id===id);if(it){it.tax=!it.tax;saveST();renderStellar();note(it.tax?'Помечено 🗂 в налоги':'Убрано из налогов')}}
   else if(act==='typrev'){ST.taxYear=(ST.taxYear||new Date().getFullYear())-1;saveST();renderStellar()}
   else if(act==='tynext'){ST.taxYear=(ST.taxYear||new Date().getFullYear())+1;saveST();renderStellar()}
   else if(act==='taxcsv')stTaxCSV();
   else if(act==='rcpt')stReceiptsHTML();
+  else if(act==='restore'){const ix=(ST.trash||[]).findIndex(x=>x.item.id===id);if(ix>=0){const tr=ST.trash[ix];ST.trash.splice(ix,1);ST[tr.coll]=ST[tr.coll]||[];ST[tr.coll].unshift(tr.item);saveST();renderStellar();note('Восстановлено ✓')}}
+  else if(act==='wipe'){const ix=(ST.trash||[]).findIndex(x=>x.item.id===id);if(ix>=0){const tr=ST.trash[ix];if(tr.item.img)imgDel(tr.item.img);ST.trash.splice(ix,1);saveST();renderStellar()}}
+  else if(act==='wipeall'){if(confirm('Удалить всё из корзины НАВСЕГДА? Вернуть будет нельзя.')){for(const tr of ST.trash||[])if(tr.item.img)imgDel(tr.item.img);ST.trash=[];saveST();renderStellar()}}
   else if(act==='img'&&b.dataset.img)showImg(b.dataset.img);
   else if(act==='saveOcr'){
     const tp=$('#stO_type')?$('#stO_type').value:'expense';
