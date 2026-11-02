@@ -1,4 +1,4 @@
-const C = 'kuda-v3g';
+const C = 'kuda-v3h';
 const A = ['./', './index.html', './app.js', './ext.js', './go.html', './manifest.webmanifest', './icon.svg'];
 /* CDN-хосты офлайн OCR (Tesseract.js) — кэшируем, чтобы скан скринов работал без интернета */
 const CDN = /cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com/;
