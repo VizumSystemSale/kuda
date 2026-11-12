@@ -1,4 +1,4 @@
-/* KUDA ext v3.5 — + корзина: удалённые записи и фото восстанавливаются (🗑 Корзина внизу STELLAR) */
+/* KUDA ext v3.6 — + свои категории с телефона (🏷) + бэкап всего в файл и восстановление (💾/📥) */
 (function(){
 'use strict';
 const $=s=>document.querySelector(s);
@@ -130,11 +130,14 @@ function injectProviderUI(){
 
 /* ================= STELLAR ================= */
 const SK2='stellar_v1';
-let ST={loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],fix:[],trash:[],maint:{lastOil:0,int:15000},weekOff:0,period:'week'};
-try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.fix=ST.fix||[];ST.trash=ST.trash||[];ST.period=ST.period||'week';ST.taxYear=ST.taxYear||new Date().getFullYear()}catch(e){}
+let ST={loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],fix:[],trash:[],cats:{},maint:{lastOil:0,int:15000},weekOff:0,period:'week'};
+try{const s=JSON.parse(localStorage.getItem(SK2)||'{}');ST=Object.assign(ST,s);ST.maint=Object.assign({lastOil:0,int:15000},s.maint||{});ST.mi=ST.mi||[];ST.fix=ST.fix||[];ST.trash=ST.trash||[];ST.cats=ST.cats||{};ST.period=ST.period||'week';ST.taxYear=ST.taxYear||new Date().getFullYear()}catch(e){}
 const saveST=()=>localStorage.setItem(SK2,JSON.stringify(ST));
 const ECATS={tolls:'🛣 Толлы',scales:'⚖️ Весы',repair:'🔧 Ремонт',ins:'🛡 Страховка',payment:'🚛 Платёж трака',park:'🅿 Парковка',wash:'🚿 Мойка',eld:'📟 ELD',permit:'📄 Пермиты',travel:'✈️ Перелёт',trans:'🚕 Убер/такси',hotel:'🏨 Отель',food:'🍔 Еда',other:'📦 Прочее'};
 const TCATS=Object.assign({fuel:'⛽ Топливо'},ECATS);
+function allCats(){return Object.assign({},ECATS,ST.cats||{})}
+function CAT(k){return (ST.cats&&ST.cats[k])||ECATS[k]||'📦 Прочее'}
+function TCAT(k){return k==='fuel'?'⛽ Топливо':CAT(k)}
 const LST={new:'В работе',done:'Доставлен',paid:'Оплачен'};
 function periodRange(){
   const off=ST.weekOff||0;const n=new Date();
@@ -197,7 +200,7 @@ function stParse(line){
     ST.fix=ST.fix||[];ST.fix.unshift({id:uid(),ts:now,name:nm,amount:nums[0],per:per});
   }else if(nums.length>=1){
     const cat=/весы|scale/.test(t)?'scales':/толл|toll/.test(t)?'tolls':/ремонт|шин|масл|сервис/.test(t)?'repair':/страх/.test(t)?'ins':/плат[её]ж|лизинг|кредит/.test(t)?'payment':/парков/.test(t)?'park':/мойк|омывайк|стекл/.test(t)?'wash':/eld/i.test(t)?'eld':/пермит|permit|штраф/.test(t)?'permit':/перел[её]т|авиа|билет|flight/i.test(t)?'travel':/убер|такси|uber|lyft/i.test(t)?'trans':/отель|гостин|hotel/i.test(t)?'hotel':/еда|обед|ужин|ресторан|кафе/.test(t)?'food':'other';
-    ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:nums[0],tax:true,title:txt||ECATS[cat].replace(/^\S+\s/,'')});
+    ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:nums[0],tax:true,title:txt||CAT(cat).replace(/^\S+\s/,'')});
   }else return null;
   saveST();return true;
 }
@@ -257,18 +260,20 @@ function renderStellar(){
   h+=s.fuel.length?s.fuel.map(f=>'<div class="st-row"><div><b>'+f.gal+' gal</b> · $'+(f.gal?(f.cost/f.gal).toFixed(2):'—')+'/gal'+(f.note?' · '+esc(f.note):'')+'</div><div class="st-r"><b>'+fmt(f.cost)+'</b>'+(f.img?'<button class="st-x" data-act="img" data-img="'+f.img+'" title="Чек">📎</button>':'')+'<button class="st-x st-tx'+(f.tax?' on':'')+'" title="В налоги" data-act="taxf" data-coll="fuel" data-id="'+f.id+'">🗂</button><button class="st-x" data-act="del" data-coll="fuel" data-id="'+f.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет заправок за этот период</p>';
   /* Расходы */
   h+='<h3 class="st-h">🧾 Затраты на трак за '+per+'</h3>';
-  h+=s.exp.length?s.exp.map(e=>'<div class="st-row"><div>'+(ECATS[e.cat]||ECATS.other)+' · '+esc(e.title)+'</div><div class="st-r"><b>'+fmt(e.amount)+'</b>'+(e.img?'<button class="st-x" data-act="img" data-img="'+e.img+'" title="Чек">📎</button>':'')+'<button class="st-x st-tx'+(e.tax?' on':'')+'" title="В налоги" data-act="taxf" data-coll="exp" data-id="'+e.id+'">🗂</button><button class="st-x" data-act="del" data-coll="exp" data-id="'+e.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет затрат за этот период</p>';
+  h+=s.exp.length?s.exp.map(e=>'<div class="st-row"><div>'+CAT(e.cat)+' · '+esc(e.title)+'</div><div class="st-r"><b>'+fmt(e.amount)+'</b>'+(e.img?'<button class="st-x" data-act="img" data-img="'+e.img+'" title="Чек">📎</button>':'')+'<button class="st-x st-tx'+(e.tax?' on':'')+'" title="В налоги" data-act="taxf" data-coll="exp" data-id="'+e.id+'">🗂</button><button class="st-x" data-act="del" data-coll="exp" data-id="'+e.id+'">✕</button></div></div>').join(''):'<p class="tiny muted">Нет затрат за этот период</p>';
   /* Постоянные расходы */
   h+=renderFixSection(s);
   /* Налоги */
   h+=renderTaxSection();
+  /* Свои категории */
+  h+=renderCatsSection();
   /* Корзина — удалённое можно вернуть */
   const trash=ST.trash||[];
   if(trash.length){
     h+='<h3 class="st-h">🗑 Корзина ('+trash.length+')</h3>';
     h+=trash.slice(0,30).map(tr=>{
       const it=tr.item;
-      const lbl=tr.coll==='fuel'?('⛽ '+it.gal+' gal · $'+it.cost):tr.coll==='loads'?('📦 '+esc(it.name||'')+' · $'+it.pay):tr.coll==='debts'?('💰 '+esc(it.title||'')+' · $'+it.amount):tr.coll==='fix'?('📅 '+esc(it.name||'')+' · $'+it.amount):((ECATS[it.cat]||'🧾')+' '+esc(it.title||'')+' · $'+it.amount);
+      const lbl=tr.coll==='fuel'?('⛽ '+it.gal+' gal · $'+it.cost):tr.coll==='loads'?('📦 '+esc(it.name||'')+' · $'+it.pay):tr.coll==='debts'?('💰 '+esc(it.title||'')+' · $'+it.amount):tr.coll==='fix'?('📅 '+esc(it.name||'')+' · $'+it.amount):(CAT(it.cat)+' '+esc(it.title||'')+' · $'+it.amount);
       return '<div class="st-row off"><div>'+lbl+'<div class="tiny muted">удалено '+dshort(tr.ts)+(it.img?' · 📎 фото на месте':'')+'</div></div><div class="st-r"><button class="chip" data-act="restore" data-id="'+it.id+'">↩ Вернуть</button><button class="st-x" data-act="wipe" data-id="'+it.id+'" title="Удалить навсегда">✕</button></div></div>';
     }).join('');
     if(trash.length>30)h+='<p class="tiny muted">Показаны 30 из '+trash.length+'</p>';
@@ -280,6 +285,8 @@ function renderStellar(){
   const left=since!=null?M.int-since:null;
   h+='<h3 class="st-h">🔧 ТО трака</h3><div class="st-c st-to"><div class="tiny muted">Масло: каждые <input id="stOilInt" type="number" value="'+M.int+'" class="st-mini"> миль'+(M.lastOil?' · последняя замена на '+M.lastOil.toLocaleString('en-US'):'')+'</div>'+(since!=null?'<div class="st-v '+(left<1000?'red':'acc')+'">'+(left>0?'Осталось '+left.toLocaleString('en-US')+' mi':'⚠️ Пора менять масло!')+'</div>':'<div class="tiny muted">Введи одометр после замены масла и записывай «одо» ежедневно</div>')+'<div class="st-r"><button class="chip" data-act="oilset">Задать одометр замены</button>'+(co?'<button class="chip" data-act="oildone">✓ Масло заменено ('+co.toLocaleString('en-US')+')</button>':'')+'</div></div>';
   h+='<button class="chip st-csv" data-act="csv">⬇ Отчёт за '+per+' (CSV)</button>';
+  h+='<div class="st-fr" style="margin-top:6px"><button class="chip st-csv" data-act="backup">💾 Бэкап всего (файл)</button><button class="chip st-csv" data-act="restore">📥 Восстановить</button></div>';
+  h+='<input type="file" id="stBak" accept="application/json,.json" class="hidden">';
   el.innerHTML=h;
   if(formMode)renderForm(formMode);
   const inp=$('#stIn');
@@ -288,6 +295,8 @@ function renderStellar(){
   if(cam)cam.onchange=e=>{if(e.target.files[0])handleStPhoto(e.target.files[0]);e.target.value=''};
   const shot=$('#stShot');
   if(shot)shot.onchange=e=>{if(e.target.files[0])handleStShot(e.target.files[0]);e.target.value=''};
+  const bak=$('#stBak');
+  if(bak)bak.onchange=e=>{if(e.target.files[0])stRestore(e.target.files[0]);e.target.value=''};
 }
 function renderForm(mode){
   const box=$('#stForm');if(!box)return;
@@ -299,7 +308,7 @@ function renderForm(mode){
   else if(mode==='miles')h='<div class="st-form"><div class="st-ft">🛣 Мили</div><div class="st-fr">'+inp('stM_odo','Одометр сейчас')+'</div><div class="tiny muted" style="margin:2px 0 6px">или</div><div class="st-fr">'+inp('stM_mi','Миль за сегодня')+'</div><button class="btn" data-act="saveMiles">+ Записать</button></div>';
   else if(mode==='debt')h='<div class="st-form"><div class="st-ft">💰 Компания должна</div><div class="st-fr">'+inp('stD_amt','Сумма $')+'</div><div class="st-fr">'+tin('stD_title','За что (толлы, рейс, возврат…)')+'</div><button class="btn" data-act="saveDebt">+ Добавить долг</button></div>';
   else if(mode==='exp'||mode==='tax'){
-    let opts='';for(const k in ECATS)opts+='<option value="'+k+'">'+ECATS[k]+'</option>';
+    let opts='';const AC=allCats();for(const k in AC)opts+='<option value="'+k+'">'+AC[k]+'</option>';
     h='<div class="st-form"><div class="st-ft">'+(mode==='tax'?'🗂 Налоговый расход':'🧾 Затрата на трак')+'</div><div class="st-fr">'+inp('stE_amt','Сумма $')+'</div><div class="st-fr"><select id="stE_cat">'+opts+'</select></div><div class="st-fr">'+tin('stE_title','Что купил (масло, шины, весы…)')+'</div><label class="st-chk"><input type="checkbox" id="stE_tax" checked> 🗂 В налоги (вычет)</label><button class="btn" data-act="saveExp">+ Добавить затрату</button></div>';
   }
   if(mode==='ocr'&&ocrDraft)h=ocrFormHtml();
@@ -337,9 +346,9 @@ async function handleStPhoto(file){
       ST.loads.unshift({id:uid(),ts:now,pay:+o.pay,miles:+o.miles||0,dead:+o.deadhead||0,name:name,st:'new',img:iid});
       msg='📦 $'+o.pay+' · '+(+o.miles||0)+' mi · '+name;
     }else if(o.type==='expense'&&+o.amount){
-      const cat=ECATS[o.category]?o.category:'other';
-      ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:+o.amount,tax:true,title:o.title||ECATS[cat].replace(/^\S+\s/,''),img:iid});
-      msg='🧾 '+ECATS[cat]+' · $'+o.amount+(o.title?' · '+o.title:'');
+      const cat=allCats()[o.category]?o.category:'other';
+      ST.exp.unshift({id:uid(),ts:now,cat:cat,amount:+o.amount,tax:true,title:o.title||CAT(cat).replace(/^\S+\s/,''),img:iid});
+      msg='🧾 '+CAT(cat)+' · $'+o.amount+(o.title?' · '+o.title:'');
     }else throw new Error('no data');
     saveST();lastAdd={coll:o.type==='fuel'?'fuel':o.type==='load'?'loads':'exp',id:(o.type==='fuel'?ST.fuel:o.type==='load'?ST.loads:ST.exp)[0].id,msg:msg};formMode=null;renderStellar();note('Добавлено: '+msg);
   }catch(e){
@@ -370,8 +379,8 @@ function renderTaxSection(){
   h+='<div class="st-week"><button class="chip" data-act="typrev">‹</button><span>'+y+' год</span><button class="chip" data-act="tynext">›</button></div>';
   const byCat={};for(const x of all)byCat[x.cat]=(byCat[x.cat]||0)+x.amount;
   const cats=Object.keys(byCat).sort((a,b)=>byCat[b]-byCat[a]);
-  if(cats.length)h+='<div class="st-c" style="margin-bottom:8px">'+cats.map(c=>'<div class="st-taxrow"><span>'+(TCATS[c]||c)+'</span><b>'+fmt(byCat[c])+'</b></div>').join('')+'</div>';
-  h+=all.length?all.slice(0,25).map(x=>'<div class="st-row"><div>'+(TCATS[x.cat]||x.cat)+' · '+esc(x.title)+'<div class="tiny muted">'+dkey(x.ts)+'</div></div><div class="st-r"><b>'+fmt(x.amount)+'</b>'+(x.img?'<button class="st-x" data-act="img" data-img="'+x.img+'" title="Чек">📎</button>':'')+'<button class="st-x st-tx on" title="Убрать из налогов" data-act="taxf" data-coll="'+x.kind+'" data-id="'+x.id+'">🗂</button></div></div>').join(''):'<p class="tiny muted">Пусто за '+y+'. Отмечай записи кнопкой 🗂 в списках или добавляй через «🗂 Налог» — сюда идут вычеты: затраты и топливо.</p>';
+  if(cats.length)h+='<div class="st-c" style="margin-bottom:8px">'+cats.map(c=>'<div class="st-taxrow"><span>'+(TCAT(c))+'</span><b>'+fmt(byCat[c])+'</b></div>').join('')+'</div>';
+  h+=all.length?all.slice(0,25).map(x=>'<div class="st-row"><div>'+(TCAT(x.cat))+' · '+esc(x.title)+'<div class="tiny muted">'+dkey(x.ts)+'</div></div><div class="st-r"><b>'+fmt(x.amount)+'</b>'+(x.img?'<button class="st-x" data-act="img" data-img="'+x.img+'" title="Чек">📎</button>':'')+'<button class="st-x st-tx on" title="Убрать из налогов" data-act="taxf" data-coll="'+x.kind+'" data-id="'+x.id+'">🗂</button></div></div>').join(''):'<p class="tiny muted">Пусто за '+y+'. Отмечай записи кнопкой 🗂 в списках или добавляй через «🗂 Налог» — сюда идут вычеты: затраты и топливо.</p>';
   if(all.length>25)h+='<p class="tiny muted">Показаны 25 из '+all.length+' — в CSV попадут все.</p>';
   h+='<button class="chip st-csv" data-act="taxcsv">⬇ Налоговый отчёт за '+y+' (CSV)</button>';
   h+='<button class="chip st-csv" data-act="rcpt">🖨 Все чеки за '+y+' одним файлом (HTML → печать/PDF)</button>';
@@ -382,13 +391,22 @@ function stTaxCSV(){
   const all=taxItems().filter(x=>new Date(x.ts).getFullYear()===y).sort((a,b)=>a.ts-b.ts);
   let c='STELLAR TAX;'+y+'\nDate;Category;Title;Amount\n';
   const byM={},byC={};
-  for(const x of all){c+=dkey(x.ts)+';'+String(TCATS[x.cat]||x.cat).replace(/;/g,',')+';'+String(x.title||'').replace(/;/g,',')+';'+x.amount+'\n';const m=dkey(x.ts).slice(0,7);byM[m]=(byM[m]||0)+x.amount;byC[x.cat]=(byC[x.cat]||0)+x.amount}
+  for(const x of all){c+=dkey(x.ts)+';'+String(TCAT(x.cat)).replace(/;/g,',')+';'+String(x.title||'').replace(/;/g,',')+';'+x.amount+'\n';const m=dkey(x.ts).slice(0,7);byM[m]=(byM[m]||0)+x.amount;byC[x.cat]=(byC[x.cat]||0)+x.amount}
   c+='\nBY MONTH\nMonth;Total\n';for(const m in byM)c+=m+';'+byM[m]+'\n';
-  c+='\nBY CATEGORY\nCategory;Total\n';for(const k in byC)c+=String(TCATS[k]||k).replace(/;/g,',')+';'+byC[k]+'\n';
+  c+='\nBY CATEGORY\nCategory;Total\n';for(const k in byC)c+=String(TCAT(k)).replace(/;/g,',')+';'+byC[k]+'\n';
   c+='\nTOTAL;;;'+all.reduce((s,x)=>s+x.amount,0)+'\n';
   const blob=new Blob(['\ufeff'+c],{type:'text/csv;charset=utf-8'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='stellar_tax_'+y+'.csv';a.click();
   note('Налоговый CSV сохранён');
+}
+/* --- Свои категории (пользовательские, добавляются с телефона) --- */
+function renderCatsSection(){
+  const cs=ST.cats||{};
+  let h='<h3 class="st-h">🏷 Свои категории</h3>';
+  h+='<div class="st-form" style="border-color:var(--line)"><div class="st-fr"><input id="stC_e" type="text" placeholder="😀" style="max-width:64px"><input id="stC_n" type="text" placeholder="Новая категория (напр. Собака)" autocomplete="off"></div><button class="btn" data-act="catadd">+ Добавить категорию</button></div>';
+  const keys=Object.keys(cs);
+  h+=keys.length?keys.map(k=>'<div class="st-row"><div>'+esc(cs[k])+'</div><div class="st-r"><button class="st-x" data-act="catdel" data-id="'+k+'">✕</button></div></div>').join(''):'<p class="tiny muted">Добавь свои категории расходов — они появятся в формах «Расход», «Налог» и в выборе после скана.</p>';
+  return h;
 }
 /* --- Фото чеков: хранение в IndexedDB (не localStorage — там мало места) --- */
 let _idb=null;
@@ -401,6 +419,31 @@ async function showImg(id){
     const url=await imgGet(id);if(!url)return note('Фото не найдено');
     const d=document.createElement('div');d.className='st-imgov';const im=new Image();im.src=url;d.appendChild(im);d.onclick=()=>d.remove();document.body.appendChild(d);
   }catch(e){note('Не смог открыть фото')}
+}
+async function stBackup(){
+  try{
+    const db=await idb();
+    const keys=await new Promise(res=>{const rq=db.transaction('imgs').objectStore('imgs').getAllKeys();rq.onsuccess=()=>res(rq.result||[])});
+    const vals=await new Promise(res=>{const rq=db.transaction('imgs').objectStore('imgs').getAll();rq.onsuccess=()=>res(rq.result||[])});
+    const imgs={};keys.forEach((k,i)=>imgs[k]=vals[i]);
+    const out={v:1,ts:Date.now(),app:'kuda-stellar',stellar:ST,ext:localStorage.getItem('kuda_ext')||'',imgs:imgs};
+    const blob=new Blob([JSON.stringify(out)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='stellar_backup_'+dkey(Date.now())+'.json';a.click();
+    note('Бэкап сохранён: все записи + '+keys.length+' фото чеков. Храни файл!');
+  }catch(e){console.error(e);note('Не смог сделать бэкап')}
+}
+async function stRestore(file){
+  try{
+    const j=JSON.parse(await file.text());
+    if(!j||j.app!=='kuda-stellar'||!j.stellar)return note('Это не файл бэкапа STELLAR');
+    if(!confirm('Восстановить из копии от '+(j.ts?dkey(j.ts):'?')+'? Текущие данные в приложении заменятся.'))return;
+    ST=Object.assign({loads:[],odo:[],mi:[],fuel:[],debts:[],exp:[],fix:[],trash:[],cats:{},maint:{lastOil:0,int:15000},weekOff:0,period:'week'},j.stellar);
+    saveST();
+    if(j.ext)localStorage.setItem('kuda_ext',j.ext);
+    const imgs=j.imgs||{};let n=0;for(const k in imgs){await imgPut(k,imgs[k]);n++}
+    formMode=null;lastAdd=null;renderStellar();
+    note('Восстановлено из копии ✓ (фото: '+n+')');
+  }catch(e){console.error(e);note('Не смог прочитать файл бэкапа')}
 }
 async function stReceiptsHTML(){
   const y=ST.taxYear||new Date().getFullYear();
@@ -416,11 +459,11 @@ async function stReceiptsHTML(){
   let h='<!DOCTYPE html><html><head><meta charset="utf-8"><title>STELLAR чеки '+y+'</title><style>body{font-family:Arial,sans-serif;max-width:820px;margin:20px auto;padding:0 12px;color:#111}table{width:100%;border-collapse:collapse;font-size:14px}td,th{border:1px solid #999;padding:5px 8px;text-align:left}tr:nth-child(even){background:#f3f3f3}.rc{page-break-inside:avoid;margin:18px 0 26px;border-top:2px solid #333;padding-top:8px}.rc img{max-width:100%;max-height:900px;border:1px solid #bbb}.muted{color:#555;font-size:13px}</style></head><body>';
   h+='<h1>STELLAR — все расходы и чеки за '+y+'</h1><p class="muted">Записей: '+all.length+' · Всего: $'+Math.round(tot).toLocaleString('en-US')+' · Из них налоговые вычеты: $'+Math.round(taxTot).toLocaleString('en-US')+'</p>';
   h+='<table><tr><th>Дата</th><th>Категория</th><th>Описание</th><th>Сумма</th><th>Вычет</th><th>Чек</th></tr>';
-  for(const x of all)h+='<tr><td>'+dkey(x.ts)+'</td><td>'+esc(TCATS[x.cat]||x.cat)+'</td><td>'+esc(x.title)+'</td><td>$'+(+x.amount).toFixed(2)+'</td><td>'+(x.tax?'да':'—')+'</td><td>'+(x.img?'есть':'—')+'</td></tr>';
+  for(const x of all)h+='<tr><td>'+dkey(x.ts)+'</td><td>'+esc(TCAT(x.cat))+'</td><td>'+esc(x.title)+'</td><td>$'+(+x.amount).toFixed(2)+'</td><td>'+(x.tax?'да':'—')+'</td><td>'+(x.img?'есть':'—')+'</td></tr>';
   h+='</table><h2>Фото чеков</h2>';
   let n=0;
   for(const x of all){if(!x.img)continue;const url=await imgGet(x.img);if(!url)continue;n++;
-    h+='<div class="rc"><b>'+dkey(x.ts)+' · '+esc(TCATS[x.cat]||x.cat)+' · $'+(+x.amount).toFixed(2)+'</b><div class="muted">'+esc(x.title)+'</div><img src="'+url+'"></div>';}
+    h+='<div class="rc"><b>'+dkey(x.ts)+' · '+esc(TCAT(x.cat))+' · $'+(+x.amount).toFixed(2)+'</b><div class="muted">'+esc(x.title)+'</div><img src="'+url+'"></div>';}
   if(!n)h+='<p class="muted">Фото чеков пока нет — снимай через 📷 Скан или 🖼 Скрин, они сохраняются автоматически.</p>';
   h+='</body></html>';
   const blob=new Blob([h],{type:'text/html;charset=utf-8'});
@@ -483,8 +526,8 @@ async function handleStShot(file){
       ST.loads.unshift({id:uid(),ts:now,pay:+o.pay,miles:+o.miles||0,dead:+o.dead||0,name:o.title||'Рейс',st:'new',img:iid});
       msg='📦 $'+o.pay+(o.miles?' · '+Math.round(o.miles)+' mi':'');
     }else if(o.type==='expense'&&+o.amount){
-      ST.exp.unshift({id:uid(),ts:now,cat:o.cat,amount:+o.amount,title:o.title||ECATS[o.cat].replace(/^\S+\s/,''),tax:true,img:iid});
-      msg='🧾 '+ECATS[o.cat]+' · $'+o.amount;
+      ST.exp.unshift({id:uid(),ts:now,cat:o.cat,amount:+o.amount,title:o.title||CAT(o.cat).replace(/^\S+\s/,''),tax:true,img:iid});
+      msg='🧾 '+CAT(o.cat)+' · $'+o.amount;
     }
     if(msg){
       saveST();lastAdd={coll:o.type==='fuel'?'fuel':o.type==='load'?'loads':'exp',id:(o.type==='fuel'?ST.fuel:o.type==='load'?ST.loads:ST.exp)[0].id,msg:msg};formMode=null;ocrDraft=null;renderStellar();
@@ -501,7 +544,7 @@ async function handleStShot(file){
 }
 function ocrFormHtml(){
   const o=(ocrDraft&&ocrDraft.o)||{};
-  let opts='';for(const k in ECATS)opts+='<option value="'+k+'">'+ECATS[k]+'</option>';
+  let opts='';const AC=allCats();for(const k in AC)opts+='<option value="'+k+'">'+AC[k]+'</option>';
   return '<div class="st-form"><div class="st-ft">🖼 Скрин распознан офлайн — проверь</div>'+
   '<div class="st-fr"><select id="stO_type"><option value="expense"'+((o.type!=='fuel'&&o.type!=='load')?' selected':'')+'>🧾 Расход</option><option value="fuel"'+(o.type==='fuel'?' selected':'')+'>⛽ Топливо</option><option value="load"'+(o.type==='load'?' selected':'')+'>📦 Рейс</option></select></div>'+
   '<div class="st-fr"><input id="stO_amt" type="number" inputmode="decimal" placeholder="Сумма $"><input id="stO_gal" type="number" inputmode="decimal" placeholder="Галлоны (топл.)"></div>'+
@@ -522,7 +565,7 @@ function stCSV(){
   c+='\nFUEL\nDate;Gallons;Cost;$/gal;City\n';
   for(const f of s.fuel)c+=dkey(f.ts)+';'+f.gal+';'+f.cost+';'+(f.gal?(f.cost/f.gal).toFixed(2):'')+';'+String(f.note||'').replace(/;/g,',')+'\n';
   c+='\nEXPENSES\nDate;Category;Title;Amount\n';
-  for(const e of s.exp)c+=dkey(e.ts)+';'+(ECATS[e.cat]||e.cat)+';'+String(e.title||'').replace(/;/g,',')+';'+e.amount+'\n';
+  for(const e of s.exp)c+=dkey(e.ts)+';'+CAT(e.cat)+';'+String(e.title||'').replace(/;/g,',')+';'+e.amount+'\n';
   c+='\nDEBTS\nDate;Title;Amount;Settled\n';
   for(const d of ST.debts)c+=dkey(d.ts)+';'+String(d.title||'').replace(/;/g,',')+';'+d.amount+';'+(d.settled?'yes':'no')+'\n';
   if(ST.fix&&ST.fix.length){c+='\nFIXED\nName;Amount;Per\n';for(const f of ST.fix)c+=String(f.name||'').replace(/;/g,',')+';'+f.amount+';'+f.per+'\n'}
@@ -567,7 +610,7 @@ function stClick(e){
   else if(act==='saveExp'){
     if(!gn('#stE_amt'))return note('Введи сумму');
     const cat=$('#stE_cat')?$('#stE_cat').value:'other';
-    ST.exp.unshift({id:uid(),ts:Date.now(),cat:cat,amount:gn('#stE_amt'),tax:$('#stE_tax')?$('#stE_tax').checked:true,title:gv('#stE_title')||ECATS[cat].replace(/^\S+\s/,'')});
+    ST.exp.unshift({id:uid(),ts:Date.now(),cat:cat,amount:gn('#stE_amt'),tax:$('#stE_tax')?$('#stE_tax').checked:true,title:gv('#stE_title')||CAT(cat).replace(/^\S+\s/,'')});
     saveST();formMode=null;renderStellar();note('🧾 Затрата записана');
   }
   else if(act==='settle'){const d=ST.debts.find(x=>x.id===id);if(d){d.settled=true;d.settledTs=Date.now();saveST();renderStellar();note('Отмечено как оплаченное')}}
@@ -589,6 +632,14 @@ function stClick(e){
   else if(act==='tynext'){ST.taxYear=(ST.taxYear||new Date().getFullYear())+1;saveST();renderStellar()}
   else if(act==='taxcsv')stTaxCSV();
   else if(act==='rcpt')stReceiptsHTML();
+  else if(act==='backup')stBackup();
+  else if(act==='restore'){const bf=$('#stBak');if(bf)bf.click()}
+  else if(act==='catadd'){
+    const nm=gv('#stC_n');if(!nm)return note('Введи название категории');
+    const em=gv('#stC_e');ST.cats=ST.cats||{};ST.cats['c'+uid()]=(em?em+' ':'')+nm;
+    saveST();renderStellar();note('🏷 Категория добавлена');
+  }
+  else if(act==='catdel'){if(ST.cats&&ST.cats[id]){delete ST.cats[id];saveST();renderStellar()}}
   else if(act==='restore'){const ix=(ST.trash||[]).findIndex(x=>x.item.id===id);if(ix>=0){const tr=ST.trash[ix];ST.trash.splice(ix,1);ST[tr.coll]=ST[tr.coll]||[];ST[tr.coll].unshift(tr.item);saveST();renderStellar();note('Восстановлено ✓')}}
   else if(act==='wipe'){const ix=(ST.trash||[]).findIndex(x=>x.item.id===id);if(ix>=0){const tr=ST.trash[ix];if(tr.item.img)imgDel(tr.item.img);ST.trash.splice(ix,1);saveST();renderStellar()}}
   else if(act==='wipeall'){if(confirm('Удалить всё из корзины НАВСЕГДА? Вернуть будет нельзя.')){for(const tr of ST.trash||[])if(tr.item.img)imgDel(tr.item.img);ST.trash=[];saveST();renderStellar()}}
@@ -599,7 +650,7 @@ function stClick(e){
     const im=ocrDraft?ocrDraft.img:null;
     if(tp==='fuel'){if(!gn('#stO_gal')||!gn('#stO_amt'))return note('Введи галлоны и сумму');ST.fuel.unshift({id:uid(),ts:Date.now(),gal:gn('#stO_gal'),cost:gn('#stO_amt'),note:gv('#stO_title'),tax:tx,img:im});note('⛽ Заправка записана')}
     else if(tp==='load'){if(!gn('#stO_amt'))return note('Введи оплату рейса');ST.loads.unshift({id:uid(),ts:Date.now(),pay:gn('#stO_amt'),miles:gn('#stO_mi'),dead:0,name:gv('#stO_title')||'Рейс',st:'new',img:im});note('📦 Рейс добавлен')}
-    else{if(!gn('#stO_amt'))return note('Введи сумму');const cat2=$('#stO_cat')?$('#stO_cat').value:'other';ST.exp.unshift({id:uid(),ts:Date.now(),cat:cat2,amount:gn('#stO_amt'),title:gv('#stO_title')||ECATS[cat2].replace(/^\S+\s/,''),tax:tx,img:im});note('🧾 Затрата записана')}
+    else{if(!gn('#stO_amt'))return note('Введи сумму');const cat2=$('#stO_cat')?$('#stO_cat').value:'other';ST.exp.unshift({id:uid(),ts:Date.now(),cat:cat2,amount:gn('#stO_amt'),title:gv('#stO_title')||CAT(cat2).replace(/^\S+\s/,''),tax:tx,img:im});note('🧾 Затрата записана')}
     saveST();formMode=null;ocrDraft=null;renderStellar();
   }
   else if(act==='csv')stCSV();
