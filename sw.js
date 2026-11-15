@@ -10,7 +10,7 @@ self.addEventListener('activate', e => {
   e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== C).map(k => caches.delete(k)))).then(() => clients.claim()));
 });
 function networkFirst(request) {
-  return fetch(request).then(response => {
+  return fetch(request,{cache:'no-store'}).then(response => {
     if (response && response.ok) {
       const copy = response.clone();
       caches.open(C).then(cache => cache.put(request, copy));
