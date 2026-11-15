@@ -17,6 +17,8 @@ const CATS=[
 {id:'connect',name:'Связь и интернет',en:'Phone & internet',icon:'📱',kw:['связь','интернет','телефон','мобил','internet','phone','sim','оператор']},
 {id:'subs',name:'Подписки',en:'Subscriptions',icon:'🔁',kw:['подписк','subscription','netflix','spotify','youtube','icloud','premium']},
 {id:'business',name:'Бизнес',en:'Business',icon:'💼',kw:['бизнес','реклам','хостинг','домен','ads','hosting','business','офис','сервис']},
+{id:'shopping',name:'Покупки и интернет',en:'Shopping & online',icon:'🛍',kw:['amazon','амазон','ebay','walmart','temu','shein','интернет-заказ','онлайн-заказ','покупк']},
+{id:'debt',name:'Платежи по долгам',en:'Debt payments',icon:'💳',kw:['платёж по долгу','платеж по долгу','погашение кредита']},
 {id:'income',name:'Доход',en:'Income',icon:'💰',kw:[]},
 {id:'other',name:'Прочее',en:'Other',icon:'📦',kw:[]}];
 const TECH=['телефон','iphone','ноутбук','laptop','наушник','планшет','телевизор','tv','console','приставк','часы','watch','монитор','пылесос','стиральн','холодильник','camera','фотоаппарат','airpods','macbook','samsung','xiaomi','playstation'];
@@ -129,14 +131,15 @@ const t=totals(y,m),list=monthTxs(y,m);
 const py=m===0?y-1:y,pm=m===0?11:m-1,pt=totals(py,pm);
 const dExp=pt.exp?Math.round((t.exp-pt.exp)/pt.exp*100):0;
 const byCat={};for(const x of list)if(x.type==='exp')byCat[x.cat]=(byCat[x.cat]||0)+toMain(x.amount,x.cur);
-const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1]).slice(0,5);
+const top=Object.entries(byCat).sort((a,b)=>b[1]-a[1]);
 const max=top.length?top[0][1]:1;
 const net=t.inc-t.exp;
 const cmp=pt.exp?(dExp>0?'📈 +'+(dExp)+'% '+(S.lang==='en'?'vs last month':'к прошлому месяцу'):'📉 '+dExp+'% '+(S.lang==='en'?'vs last month':'к прошлому месяцу')):'';
+const operations=[...list].sort((a,b)=>b.ts-a.ts).map(x=>{const c=cat(x.cat);return '<div class="tx"><div class="tx-ic">'+c.icon+'</div><div class="tx-mid"><div class="tx-t">'+esc(x.title)+'</div><div class="tx-s">'+dkey(x.ts)+' · '+catName(c)+'</div></div><div class="tx-a '+(x.type==='inc'?'inc':'exp')+'">'+(x.type==='inc'?'+':'−')+fmt(x.amount,x.cur)+'</div></div>'}).join('');
 $('repBody').innerHTML='<div class="rep-cards"><div class="rep-card"><span class="tiny muted">'+(S.lang==='en'?'Income':'Доходы')+'</span><b class="inc">+'+fmt(t.inc)+'</b></div><div class="rep-card"><span class="tiny muted">'+(S.lang==='en'?'Expenses':'Траты')+'</span><b class="exp">−'+fmt(t.exp)+'</b></div><div class="rep-card"><span class="tiny muted">'+(S.lang==='en'?'Net':'Итог')+'</span><b class="'+(net>=0?'inc':'exp')+'">'+(net>=0?'+':'−')+fmt(Math.abs(net))+'</b></div></div>'
 +(cmp?'<p class="tiny muted" style="margin-bottom:10px">'+cmp+' ('+(S.lang==='en'?MNE:MN)[pm]+': '+fmt(pt.exp)+')</p>':'')
-+(top.length?'<h3 class="sec">'+(S.lang==='en'?'Top categories':'Топ категорий')+'</h3>'+top.map(function(tp){const id=tp[0],v=tp[1];const c=cat(id);return '<div class="bar-row"><div class="b-ic">'+c.icon+'</div><div class="b-n">'+catName(c)+'</div><div class="bar-wrap"><div class="bar" style="width:'+Math.round(v/max*100)+'%"></div></div><div class="b-v">'+fmt(v)+'</div></div>'}).join(''):'<div class="empty">'+(S.lang==='en'?'No expenses this month yet':'В этом месяце пока нет трат')+'</div>')
-+(list.length?'<p class="tiny muted" style="margin-top:12px">'+(S.lang==='en'?'Total operations: ':'Всего операций: ')+list.length+'</p>':'');
++(top.length?'<h3 class="sec">'+(S.lang==='en'?'All categories':'Все категории')+'</h3>'+top.map(function(tp){const id=tp[0],v=tp[1];const c=cat(id);return '<div class="bar-row"><div class="b-ic">'+c.icon+'</div><div class="b-n">'+catName(c)+'</div><div class="bar-wrap"><div class="bar" style="width:'+Math.round(v/max*100)+'%"></div></div><div class="b-v">'+fmt(v)+'</div></div>'}).join(''):'<div class="empty">'+(S.lang==='en'?'No expenses this month yet':'В этом месяце пока нет трат')+'</div>')
++(list.length?'<h3 class="sec">'+(S.lang==='en'?'All operations':'Все операции')+' · '+list.length+'</h3>'+operations:'');
 const dim=new Date(y,m+1,0).getDate();
 const byDay={};let dmax=0;
 for(const x of list)if(x.type==='exp'){const dd=new Date(x.ts).getDate();byDay[dd]=(byDay[dd]||0)+toMain(x.amount,x.cur);if(byDay[dd]>dmax)dmax=byDay[dd]}
@@ -152,6 +155,12 @@ $('goalList').innerHTML=S.goals.length?S.goals.map(g=>{const p=Math.min(100,Math
 const now=new Date();
 $('recList').innerHTML=S.recurring.length?S.recurring.map(r=>{const left=r.day-now.getDate();return '<div class="rec-row"><div class="grow">🔁 <b>'+esc(r.title)+'</b> · '+fmt(r.amount)+' · '+(S.lang==='en'?'day':'число')+' '+r.day+'</div>'+(left>=0&&left<=3?'<span class="pill red">'+(S.lang==='en'?'in ':'через ')+left+' '+(S.lang==='en'?'d':'дн')+'</span>':'<span class="pill">'+(S.lang==='en'?'monthly':'ежемес.')+'</span>')+'<button class="tx-x" data-rdel="'+r.id+'">×</button></div>'}).join(''):'<div class="empty">'+(S.lang==='en'?'No recurring payments':'Нет повторяющихся платежей')+'</div>';
 $('debtList').innerHTML=S.debts.length?S.debts.map(d2=>'<div class="debt-row"><div class="grow">💸 '+esc(d2.title)+' · <b>'+fmt(d2.amount,d2.cur)+'</b></div><button class="mini-btn" data-dpay="'+d2.id+'">'+(S.lang==='en'?'returned':'вернули')+'</button></div>').join(''):'<div class="empty">'+(S.lang==='en'?'Nobody owes you':'Никто не должен')+'</div>';
+renderCreditDebts();
+}
+function renderCreditDebts(){
+const list=S.creditDebts||[],remaining=list.reduce((sum,d)=>sum+(+d.remaining||0),0),paid=list.reduce((sum,d)=>sum+(+d.paid||0),0);
+$('creditDebtTotal').innerHTML=list.length?'<div class="debt-total-label">Общий остаток долга</div><div class="debt-total-value">−'+fmt(remaining)+'</div><div class="tiny muted">Уже оплачено: '+fmt(paid)+'</div>':'';
+$('creditDebtList').innerHTML=list.length?list.map(d=>{const initial=+d.initial||0,left=+d.remaining||0,done=+d.paid||0,p=initial?Math.min(100,Math.round(done/initial*100)):0;return '<div class="goal credit-debt"><div class="goal-top"><span>💳 '+esc(d.name)+'</span><b class="exp">−'+fmt(left,d.cur)+'</b></div><div class="goal-bar"><div class="goal-fill" style="width:'+p+'%"></div></div><div class="goal-sub"><span>Оплачено '+fmt(done,d.cur)+' · '+p+'%</span><button class="tx-x" data-cdel="'+d.id+'" aria-label="Удалить долг">×</button></div><div class="credit-debt-actions"><button class="mini-btn" data-cpay="'+d.id+'">+ Платёж</button><button class="mini-btn" data-cedit="'+d.id+'">Исправить остаток</button></div></div>'}).join(''):'<div class="empty">Добавь долг один раз. Каждый платёж уменьшит остаток и попадёт в личные расходы.</div>';
 }
 function renderReceipts(){
 const now=Date.now();
@@ -256,12 +265,16 @@ $('repNext').onclick=()=>{repDate=new Date(repDate.getFullYear(),repDate.getMont
 $('csvBtn').onclick=()=>monthCSV(false);$('csvBiz').onclick=()=>monthCSV(true);$('pdfBtn').onclick=printPDF;
 $('goalAdd').onclick=()=>{const n=$('goalName').value.trim(),t=parseFloat($('goalTarget').value);if(!n||!(t>0)){toast(S.lang==='en'?'Enter name and amount':'Введи название и сумму');return}S.goals.push({id:uid(),name:n,target:t,saved:0});$('goalName').value='';$('goalTarget').value='';save();renderGoals()};
 $('recAdd').onclick=()=>{const t=$('recTitle').value.trim(),a=parseFloat($('recAmount').value),d=parseInt($('recDay').value);if(!t||!(a>0)||!(d>=1&&d<=31)){toast(S.lang==='en'?'Fill title, amount, day':'Заполни название, сумму и день');return}S.recurring.push({id:uid(),title:t,amount:a,day:d,cat:guessCat(t)});$('recTitle').value='';$('recAmount').value='';$('recDay').value='';save();renderGoals();processRecurring();renderHome()};
+$('creditAdd').onclick=()=>{const name=$('creditName').value.trim(),amount=parseFloat($('creditAmount').value.replace(',','.'));if(!name||!(amount>0))return toast('Введи банк и текущий долг');S.creditDebts=S.creditDebts||[];S.creditDebts.push({id:uid(),name,initial:amount,paid:0,remaining:amount,cur:S.main,payments:[]});$('creditName').value='';$('creditAmount').value='';save();renderGoals();toast('Долг добавлен')};
 document.addEventListener('click',e=>{
 const g=e.target.dataset||{};
 if(g.gadd){const gl=S.goals.find(x=>x.id===g.gadd);const v=parseFloat(prompt((S.lang==='en'?'Add to goal «':'Внести в цель «')+gl.name+'»:',''));if(v>0){gl.saved+=v;save();renderGoals()}}
 if(g.gdel){S.goals=S.goals.filter(x=>x.id!==g.gdel);save();renderGoals()}
 if(g.rdel){S.recurring=S.recurring.filter(x=>x.id!==g.rdel);save();renderGoals()}
 if(g.dpay){const d2=S.debts.find(x=>x.id===g.dpay);S.debts=S.debts.filter(x=>x.id!==g.dpay);S.txs.unshift({id:uid(),ts:Date.now(),type:'inc',amount:d2.amount,cur:d2.cur,title:d2.title+' (вернули)',cat:'income',tag:'personal'});save();renderAll();toast('💰 '+fmt(d2.amount,d2.cur))}
+if(g.cpay){const d=(S.creditDebts||[]).find(x=>x.id===g.cpay);if(!d)return;const raw=prompt('Платёж по «'+d.name+'». Остаток '+fmt(d.remaining,d.cur)+':','');if(raw===null)return;const v=parseFloat(raw.replace(',','.'));if(!(v>0))return;if(v>d.remaining)return toast('Платёж больше остатка. Проверь сумму или исправь остаток.');d.paid=Math.round(((+d.paid||0)+v)*100)/100;d.remaining=Math.round((d.remaining-v)*100)/100;d.payments=d.payments||[];d.payments.push({id:uid(),ts:Date.now(),amount:v});S.txs.unshift({id:uid(),ts:Date.now(),type:'exp',amount:v,cur:d.cur||S.main,title:'Платёж по долгу: '+d.name,cat:'debt',tag:'personal',debtId:d.id});save();renderAll();toast('Платёж записан. Осталось: '+fmt(d.remaining,d.cur))}
+if(g.cedit){const d=(S.creditDebts||[]).find(x=>x.id===g.cedit);if(!d)return;const raw=prompt('Точный остаток по «'+d.name+'» из банка (с учётом процентов):',String(d.remaining));if(raw===null)return;const v=parseFloat(raw.replace(',','.'));if(!(v>=0))return;d.remaining=Math.round(v*100)/100;d.initial=Math.round((d.remaining+(+d.paid||0))*100)/100;save();renderGoals();toast('Остаток обновлён')}
+if(g.cdel){const d=(S.creditDebts||[]).find(x=>x.id===g.cdel);if(d&&confirm('Удалить карточку долга «'+d.name+'»? История платежей в расходах останется.')){S.creditDebts=S.creditDebts.filter(x=>x.id!==g.cdel);save();renderGoals()}}
 });
 $('setBal').onchange=e=>{S.startBalance=parseFloat(e.target.value)||0;save();renderAll()};
 $('setCur').onchange=e=>{S.main=e.target.value;save();renderAll()};
@@ -288,7 +301,7 @@ renderAll();
 monthlyReportHint();
 if(!S.rateFetched){fetchRate();S.rateFetched=true;save()}
 }
-S=load()||{setup:false,name:'',main:'USD',eurRate:0.92,startBalance:0,txs:[],receipts:[],limits:{},kimiKey:'',kimiModel:'moonshot-v1-32k-vision-preview',defTag:'personal',rateFetched:false,hourlyRate:0,lang:'ru',goals:[],recurring:[],debts:[],warranties:[],lastReportSeen:''};
-S.goals=S.goals||[];S.recurring=S.recurring||[];S.debts=S.debts||[];S.warranties=S.warranties||[];S.lang=S.lang||'ru';
+S=load()||{setup:false,name:'',main:'USD',eurRate:0.92,startBalance:0,txs:[],receipts:[],limits:{},kimiKey:'',kimiModel:'moonshot-v1-32k-vision-preview',defTag:'personal',rateFetched:false,hourlyRate:0,lang:'ru',goals:[],recurring:[],debts:[],creditDebts:[],warranties:[],lastReportSeen:''};
+S.goals=S.goals||[];S.recurring=S.recurring||[];S.debts=S.debts||[];S.creditDebts=S.creditDebts||[];S.warranties=S.warranties||[];S.lang=S.lang||'ru';
 bind();boot();
 if('serviceWorker' in navigator)navigator.serviceWorker.register('sw.js').catch(()=>{});
