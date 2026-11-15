@@ -704,15 +704,13 @@ css.textContent='#nav{left:50%!important;right:auto!important;width:100%!importa
 document.head.appendChild(css);
 
 function init(){
+  /* STELLAR v4 lives in stellar.js. Keep this module for AI providers/PWA only. */
   try{
-    const navBtn=document.querySelector('[data-tab="stellar"]');
-    if(navBtn)navBtn.addEventListener('click',()=>setTimeout(renderStellar,30));
     const setBtn=document.querySelector('[data-tab="set"]');
     if(setBtn)setBtn.addEventListener('click',()=>setTimeout(()=>{injectProviderUI();syncAppKey()},50));
-    const st=$('#tab-stellar');
-    if(st){st.addEventListener('click',stClick);st.addEventListener('change',stChange)}
-    renderStellar();
-  }catch(e){console.error('STELLAR init:',e)}
+    const onbGo=document.querySelector('#onbGo');
+    if(onbGo)onbGo.addEventListener('click',()=>{const onb=document.querySelector('#onb');if(onb)onb.classList.add('hidden')});
+  }catch(e){console.error('EXT init:',e)}
   try{injectProviderUI();syncAppKey()}catch(e){console.error('EXT init:',e)}
   setTimeout(showInstall,1500);
 }
