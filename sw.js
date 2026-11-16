@@ -1,4 +1,4 @@
-const C = 'kuda-v5-personal-credit-7';
+const C = 'kuda-v6-lease-settlement-8';
 const A = ['./', './index.html', './app.js', './ext.js', './stellar.js', './stellar.css', './go.html', './manifest.webmanifest', './icon.svg'];
 /* CDN-хосты офлайн OCR (Tesseract.js) — кэшируем, чтобы скан скринов работал без интернета */
 const CDN = /cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com/;
