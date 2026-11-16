@@ -1,4 +1,4 @@
-const C = 'kuda-v7-receipt-audit';
+const C = 'kuda-v8-office-fuel-total';
 const A = ['./', './index.html', './app.js', './ext.js', './stellar.js', './stellar.css', './go.html', './manifest.webmanifest', './icon.svg'];
 /* CDN-хосты офлайн OCR (Tesseract.js) — кэшируем, чтобы скан скринов работал без интернета */
 const CDN = /cdn\.jsdelivr\.net|tessdata\.projectnaptha\.com/;
